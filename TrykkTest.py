@@ -1,4 +1,4 @@
-# Testing av beregning av trykk og nivå i pygame
+# Testing av beregning av trykk og nivå i
 
 import pygame
 
