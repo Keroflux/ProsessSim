@@ -1,11 +1,12 @@
 # Testing av beregning av trykk og nivå i
 
 import pygame
+import math
 
 pygame.init()
 
-wScreen = 500
-hScreen = 500
+wScreen = 1000
+hScreen = 800
 screen = pygame.display.set_mode((wScreen, hScreen))
 
 
@@ -17,37 +18,35 @@ class Separator(object):
         self.y = y
         self.volume = volume
         self.tag = tag
-
-    def draw(self):
         pygame.draw.rect(screen, (65, 65, 65), (self.x, self.y, self.width, self.height))
 
 
-class FlowMeter(object):
-    def __init__(self, tag, x=100, y=100):
-        self.tag = tag
-        self.x = x
-        self.y = y
-        self.width = 10
-        self.height = 5
-
-    def draw(self):
-        pygame.draw.rect(screen, (255, 255, 255), (self.x, self.y, self.width, self.height))
-
-
-font = pygame.font.SysFont('comicsans', 30, True)
+def transmitter(unit, x, y):
+    font = pygame.font.SysFont('arial', 30, True)
+    if unit == pressure:
+        content = font.render('Bar: ' + str(round(unit, 2)), 1, (255, 255, 255))
+        screen.blit(content, (x, y))
+    elif unit == level:
+        content = font.render('Level: ' + str(round(unit / volume * 100, 2)) + '%', 1, (255, 255, 255))
+        screen.blit(content, (x, y))
 
 
 def redraw():
-    screen.fill((0, 0, 0))
-    text = font.render('Bar: ' + str(pressure), 1, (255, 255, 255))
-    screen.blit(text, (100, 100))
+    screen.fill((128, 128, 128))
+    transmitter(pressure, 100, 300)
+    transmitter(level, 100, 100)
+    Separator('d001', 100, 500, 10)
     pygame.display.update()
 
 
-flowInn = 50
+# Pressure and simulation
+flowGas = 1000
+flowLiquid = 500
 volume = 8
-volumeGas = 0
+volumeGas = 8
 pressure = 0
+level = 0
+volumeLeft = volume
 
 clock = pygame.time.Clock()
 fps = 30
@@ -63,9 +62,12 @@ while run:
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
 
-    unit = 3600 * fps
-    volumeGas = volumeGas + (flowInn / unit)
-    pressure = volume * volumeGas
+    # Pressure and simulation
+    m3h = 3600 * fps
+    volumeGas = volumeGas + flowGas / m3h
+    pressure = volumeGas / volumeLeft
+    level = level + flowLiquid / m3h / volume
+    volumeLeft = volume - level
     redraw()
 
 pygame.quit()
