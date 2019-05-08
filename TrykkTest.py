@@ -18,6 +18,8 @@ class Separator(object):
         self.y = y
         self.volume = volume
         self.tag = tag
+
+    def draw(self):
         pygame.draw.rect(screen, (65, 65, 65), (self.x, self.y, self.width, self.height))
 
 
@@ -31,11 +33,14 @@ def transmitter(unit, x, y):
         screen.blit(content, (x, y))
 
 
+d001 = Separator('d001', 100, 500, 10)
+
+
 def redraw():
     screen.fill((128, 128, 128))
     transmitter(pressure, 100, 300)
     transmitter(level, 100, 100)
-    Separator('d001', 100, 500, 10)
+    d001.draw()
     pygame.display.update()
 
 
