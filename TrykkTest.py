@@ -1,7 +1,6 @@
-# Testing av beregning av trykk og nivå i
+# Testing av beregning av trykk og nivå i pygame
 
 import pygame
-import math
 
 pygame.init()
 
@@ -35,11 +34,7 @@ class Separator(object):
         self.volumeGas = self.volumeGas + self.flowInnGas / m3h
 
         self.pressure = self.volumeGas / self.volumeLeft
-        if self.levelCubes < self.volume:
-            self.level = self.levelCubes / self.volume
-        else:
-            self.levelCubes = self.volume
-            self.volumeLeft = 0
+        self.level = self.levelCubes / self.volume * 100
 
 
 class Transmitter(object):
@@ -58,7 +53,10 @@ class Transmitter(object):
             content = font.render('Bar: ' + str(round(measuring_point, 2)), 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
         elif self.typ == 'level':
-            content = font.render('Level: ' + str(round(measuring_point * 100, 2)) + '%', 1, (255, 255, 255))
+            content = font.render('Level: ' + str(round(measuring_point, 2)) + '%', 1, (255, 255, 255))
+            screen.blit(content, (self.x, self.y))
+        elif self.typ == 'flow':
+            content = font.render(str(round(measuring_point, 2)) + 'm3/h', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
         else:
             content = font.render('fault: ' + str(round(measuring_point, 2)) + '%', 1, (255, 255, 255))
