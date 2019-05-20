@@ -13,7 +13,7 @@ screen = pygame.display.set_mode((wScreen, hScreen))
 class Separator(object):
     pressure = 0
     level = 0
-    levelActual = 0
+    levelCubes = 0
     volumeGas = 0
     volumeLeft = 0
 
@@ -30,15 +30,15 @@ class Separator(object):
 
     def draw(self):
         pygame.draw.rect(screen, (65, 65, 65), (self.x, self.y, self.width, self.height))
-        self.levelActual = self.levelActual + self.flowInnOil / m3h
-        self.volumeLeft = self.volume - self.levelActual
+        self.levelCubes = self.levelCubes + self.flowInnOil / m3h
+        self.volumeLeft = self.volume - self.levelCubes
         self.volumeGas = self.volumeGas + self.flowInnGas / m3h
 
         self.pressure = self.volumeGas / self.volumeLeft
-        if self.levelActual < self.volume:
-            self.level = self.levelActual / self.volume
+        if self.levelCubes < self.volume:
+            self.level = self.levelCubes / self.volume
         else:
-            self.levelActual = self.volume
+            self.levelCubes = self.volume
             self.volumeLeft = 0
 
 
