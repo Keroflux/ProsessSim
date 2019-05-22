@@ -17,6 +17,7 @@ class Separator(object):
         self.pressure = 0
         self.volumeGas = 0
         self.level = 0
+        self.temperature = 0
         self.levelCubes = 0
         self.width = 300
         self.height = 120
@@ -30,6 +31,7 @@ class Separator(object):
 
         self.flowInnOil = self.inn_source[0]
         self.flowInnGas = self.inn_source[1]
+        self.flowInnWater = self.inn_source[2]
 
     def draw(self):
         pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
@@ -59,16 +61,34 @@ class Transmitter(object):
             content = font.render('Level: ' + str(round(measuring_point.level, 2)) + '%', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
         elif self.typ == 'flow':
-            content = font.render(str(round(measuring_point, 2)) + 'm3/h', 1, (255, 255, 255))
+            content = font.render(str(round(measuring_point.flow * m3h, 2)) + 'm3/h', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
         else:
             content = font.render('fault: ' + str(round(measuring_point, 2)) + '%', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
 
 
-d001 = Separator((5000, 5000), 500, 10)
+class Valve(object):
+    def __init__(self, typ, size=10, x=200, y=200):
+        self.width = 100
+        self.height = 50
+        self.opening = 10
+        self.flow = 0
+        self.size = size
+        self.typ = typ
+        self.x = x
+        self.y = y
+
+    def draw(self, measuring_point):
+        pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
+        self.flow = self.size * measuring_point.pressure * self.opening / m3h
+
+
+d001 = Separator((500, 5000, 0), 500, 10)
 pi001 = Transmitter('pressure')
 li001 = Transmitter('level', 500, 500)
+fv001 = Valve('flow', 10, 500, 600)
+fi001 = Transmitter('flow', 500, 650)
 
 
 def redraw():
@@ -76,6 +96,8 @@ def redraw():
     d001.draw()
     pi001.draw(d001)
     li001.draw(d001)
+    fv001.draw(d001)
+    fi001.draw(fv001)
     pygame.display.update()
 
 
