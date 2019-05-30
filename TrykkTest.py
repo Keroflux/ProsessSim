@@ -8,23 +8,28 @@ pygame.init()
 wScreen = 1000
 hScreen = 800
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
-fps = 30
-m3h = 3600 * fps
-clicked = False
+
+userFPS = 30
+clock = pygame.time.Clock()
 
 
 class Separator(object):
 
     def __init__(self, tag, volume=8):
-        self.volumeLeft = 0
         self.pressure = 0
-        self.volumeGas = 0
-        self.levelOil = 0
         self.temperature = 0
-        self.levelCubesOil = 0
+        self.volumeGas = 0
+        self.volumeLeft = 0
+
+        self.levelOil = 0
+        self.cubesOil = 0
+        self.levelWater = 0
+        self.cubesWater = 0
+
         self.flowInnOil = 0
         self.flowInnGas = 0
         self.flowInnWater = 0
+
         self.waterOilSep = 0
         self.gasOilSep = 0
 
@@ -48,18 +53,19 @@ class Separator(object):
         self.flowInnGas = source.flowGas
         self.flowInnWater = source.flowWater
 
-        self.levelCubesOil = self.levelCubesOil - out_source.flowOil + self.flowInnOil
-        self.volumeLeft = self.volume - self.levelCubesOil
+        self.cubesOil = self.cubesOil - out_source.flowOil + self.flowInnOil
+        self.volumeLeft = self.volume - self.cubesOil
         self.volumeGas = self.volumeGas + self.flowInnGas
 
         # TODO: separation efficiency calculation for oil/gas oil/water
 
         self.pressure = self.volumeGas / self.volumeLeft
-        self.levelOil = self.levelCubesOil / self.volume * 100
+        self.levelOil = self.cubesOil / self.volume * 100
 
 
 class Transmitter(object):
-    def __init__(self, typ, x=200, y=200):
+
+    def __init__(self, typ):
         self.width = 100
         self.height = 50
         self.value = 0
@@ -113,13 +119,17 @@ class Valve(object):
     def __init__(self, typ, size=2):
         self.width = 100
         self.height = 50
+
         self.opening = 10
+
         self.flow = 0
         self.flowOil = 0
         self.flowGas = 0
         self.flowWater = 0
+
         self.size = size
         self.typ = typ
+
         self.x = 0
         self.y = 0
 
@@ -137,7 +147,7 @@ class Valve(object):
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width, self.y + self.height / 2),
                          (out_source.x, out_source.y + out_source.height), 4)
         if self.typ == 'liquid':
-            if source.levelCubesOil > 0:
+            if source.cubesOil > 0:
                 self.flowOil = self.size * source.pressure * self.opening / m3h
                 # TODO: flow water and gas calculation
             else:
@@ -176,6 +186,7 @@ class Controller(object):
 
 class Dummy(object):
     def __init__(self, flow_oil, flow_gas, flow_water=0, pressure=0, level=0):
+        m3h = 3600 * 30  # TODO: make draw function and get rid of dummy m3h
         self.flowOil = flow_oil / m3h
         self.flowGas = flow_gas / m3h
         self.flowWater = flow_water / m3h
@@ -197,6 +208,7 @@ li002 = Transmitter('level oil')
 
 
 def redraw():
+
     screen.fill((128, 128, 128))
 
     pi001.draw(d001, 10, 10)
@@ -207,14 +219,24 @@ def redraw():
     d002.draw(fv001, dummy, 600, 300)
     li002.draw(d002, 600, 200)
 
+    print(fps)
+
     pygame.display.update()
 
 
-clock = pygame.time.Clock()
-
+clicked = False
 run = True
+
 while run:
-    clock.tick(fps)
+
+    trueFPS = clock.get_fps()
+    if trueFPS < 1:
+        fps = 1
+        m3h = 3600 * fps
+    else:
+        fps = trueFPS
+        m3h = 3600 * fps
+    clock.tick(userFPS)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
