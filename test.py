@@ -9,8 +9,12 @@ wScreen = 1000
 hScreen = 800
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 
-userFPS = 25
+userFPS = 30
 clock = pygame.time.Clock()
+
+panX = 0
+panY = 0
+zoom = 1
 
 
 class Separator(object):
@@ -42,8 +46,10 @@ class Separator(object):
         self.volume = volume
 
     def draw(self, source, out_source, x=10, y=10):
-        self.x = x
-        self.y = y
+        self.x = x + panX
+        self.y = y + panY
+        self.width = 300
+        self.height = 120
 
         pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
         font = pygame.font.SysFont('arial', 25, True)
@@ -74,8 +80,8 @@ class Transmitter(object):
         self.typ = typ
 
     def draw(self, measuring_point, x=10, y=10):
-        self.x = x
-        self.y = y
+        self.x = x + panX
+        self.y = y + panY
 
         pygame.draw.rect(screen, (75, 75, 75), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width / 2, self.y + self.height),
@@ -83,7 +89,7 @@ class Transmitter(object):
 
         font = pygame.font.SysFont('arial', 25, True)
         if self.typ == 'pressure':
-            content = font.render('Pressure: ' + str(round(measuring_point.pressure, 2)) + 'Bar', 1, (255, 255, 255))
+            content = font.render(str(round(measuring_point.pressure, 2)) + 'Bar', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
 
             self.value = measuring_point.pressure
@@ -136,20 +142,31 @@ class Valve(object):
     def draw(self, source, out_source, x, y):
         mPos = pygame.mouse.get_pos()  # TODO: fix this
         if clicked:
-            self.x = mPos[0]
-            self.y = mPos[1]
+            self.x = mPos[0] + panX
+            self.y = mPos[1] + panY
         else:
-            self.x = x
-            self.y = y
+            self.x = x + panX
+            self.y = y + panY
 
         if self.opening < 0:
             self.opening = 0
 
         pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
+
         pygame.draw.line(screen, (255, 255, 255), (self.x, self.y + self.height / 2),
-                         (source.x + source.width, source.y + source.height), 4)
+                         (self.x - 50, self.y + self.height / 2), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.x - 50, self.y + self.height / 2),
+                         (self.x - 50, source.y + source.height - 4), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.x - 50, source.y + source.height - 4),
+                         (source.x + source.width - 2, source.y + source.height - 4), 4)
+
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width, self.y + self.height / 2),
-                         (out_source.x, out_source.y + out_source.height), 4)
+                         (self.x + self.width + 50, self.y + self.height / 2), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.x + self.width + 50, self.y + self.height / 2),
+                         (self.x + self.width + 50, out_source.y + out_source.height - 4), 4)
+        pygame.draw.line(screen, (255, 255, 255), (self.x + self.width + 50, out_source.y + out_source.height - 4),
+                         (out_source.x, out_source.y + source.height - 4), 4)
+
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
         screen.blit(opening, (self.x + 5, self.y))
@@ -185,8 +202,8 @@ class Controller(object):
         self.dOffset = [0, 0]  # List that stores the two last offset values
 
     def draw(self, source, target, x=10, y=10, p_value=5, i_value=2, d_value=5):
-        self.x = x
-        self.y = y
+        self.x = x + panX
+        self.y = y + panY
 
         self.setPoint = 3
         self.offset = self.setPoint - source.value
@@ -194,19 +211,19 @@ class Controller(object):
         self.dProcessValue.append(source.value)
         if len(self.dProcessValue) > 2:
             self.dProcessValue.pop(0)
-        dpv = (self.dProcessValue[1] - self.dProcessValue[0]) / 0.04
+        dpv = (self.dProcessValue[1] - self.dProcessValue[0]) / timeStep
 
         self.dOffset.append(self.offset)
         if len(self.dOffset) > 2:
             self.dOffset.pop(0)
-        dof = (self.dOffset[1] - self.dOffset[0]) * 0.04
+        dof = (self.dOffset[1] - self.dOffset[0]) * timeStep
 
         self.p = p_value * self.offset
         self.i = p_value / i_value * dof
         self.d = - p_value * d_value * dpv
         self.pid = self.p + self.i + self.d
 
-        self.output = self.pid * 0.04
+        self.output = self.pid * timeStep
 
         target.opening = target.opening - self.output
         if target.opening < 0:
@@ -235,10 +252,6 @@ class Dummy(object):
         self.levelOil = level
 
 
-def line(start, end):
-    pygame.draw.line(screen, (255, 255, 255), (start[0], ), end, 2)
-
-
 dummy = Dummy()
 dummy2 = Dummy()
 dummy3 = Dummy()
@@ -264,12 +277,21 @@ def redraw():
 
     pi001.draw(d001, 10, 10)
     li001.draw(d001, 200, 300)
-    fv001.draw(d001, d002, 400, 200)
+    fv001.draw(d001, d002, 450, 300)
     fi001.draw(fv001, 400, 100)
     d001.draw(dummy2, fv001, 50, 100)
-    d002.draw(fv001, dummy, 600, 300)
+    d002.draw(fv001, dummy, 700, 300)
     li002.draw(d002, 600, 200)
     lic001.draw(li001, fv001)
+
+    # FPS and sim-speed
+    font = pygame.font.SysFont('arial', 15, False)
+    hz = font.render(str(round(trueFPS, 2)) + 'Hz', 1, (0, 0, 0))
+    screen.blit(hz, (300, 5))
+
+    font = pygame.font.SysFont('arial', 15, False)
+    pros = font.render(str(round(p, 2)) + '%', 1, (0, 0, 0))
+    screen.blit(pros, (360, 5))
 
     pygame.display.update()
 
@@ -279,23 +301,44 @@ run = True
 
 while run:
 
+    clock.tick(userFPS)
+
     trueFPS = clock.get_fps()
-    if trueFPS < 1:
+    p = trueFPS / userFPS * 100
+    if trueFPS < 0.1:
+        timeStep = 1 / userFPS
         m3h = 3600 * userFPS
     else:
         m3h = 3600 * trueFPS
-    clock.tick(userFPS)
+        timeStep = 1 / trueFPS
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             clicked = True
+            if event.button == 4:
+                zoom = zoom + 1
+                print('zoom inn')
+            if event.button == 5:
+                zoom = zoom - 1
+                print('zoom out')
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
         # Makes the window resizable
         if event.type == pygame.VIDEORESIZE:
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+
+    keys = pygame.key.get_pressed()
+    for key in keys:
+        if keys[pygame.K_LEFT]:
+            panX = panX - 0.01
+        if keys[pygame.K_RIGHT]:
+            panX = panX + 0.01
+        if keys[pygame.K_UP]:
+            panY = panY - 0.01
+        if keys[pygame.K_DOWN]:
+            panY = panY + 0.01
 
     redraw()
 
