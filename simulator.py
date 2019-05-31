@@ -12,7 +12,8 @@ clock = pygame.time.Clock()
 
 
 def redraw():
-    pass
+    screen.fill((128, 128, 128))
+    pygame.display.update()
 
 
 clicked = False

@@ -141,6 +141,7 @@ class Valve(object):
         else:
             self.x = x
             self.y = y
+
         pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x, self.y + self.height / 2),
                          (source.x + source.width, source.y + source.height), 4)
@@ -199,6 +200,10 @@ class Dummy(object):
     def draw(self, flow_oil, flow_gas):
         self.flowOil = flow_oil / m3h
         self.flowGas = flow_gas / m3h
+
+
+def line(start, end):
+    pygame.draw.line(screen, (255, 255, 255), (start[0], ), end, 2)
 
 
 dummy = Dummy()
