@@ -9,14 +9,14 @@ wScreen = 1000
 hScreen = 800
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 
-userFPS = 30
+userFPS = 25
 clock = pygame.time.Clock()
 
 
 class Separator(object):
 
     def __init__(self, tag, volume=8):
-        self.pressure = 0
+        self.pressure = 1
         self.temperature = 0
         self.volumeGas = 0
         self.volumeLeft = 0
@@ -185,31 +185,43 @@ class Controller(object):
 
 
 class Dummy(object):
-    def __init__(self, flow_oil, flow_gas, flow_water=0, pressure=0, level=0):
+    def __init__(self, flow_water=0, pressure=0, level=0):
         m3h = 3600 * 30  # TODO: make draw function and get rid of dummy m3h
-        self.flowOil = flow_oil / m3h
-        self.flowGas = flow_gas / m3h
+        self.flowOil = 0
+        self.flow = 50 / m3h
+        self.flowGas = 0
         self.flowWater = flow_water / m3h
         self.pressure = pressure
         self.levelOil = level
+        self.x = 10
+        self.y = 10
+
+    def draw(self, flow_oil, flow_gas):
+        self.flowOil = flow_oil / m3h
+        self.flowGas = flow_gas / m3h
 
 
-dummy = Dummy(0, 0)
-dummy2 = Dummy(50, 5000)
-dummy3 = Dummy(5000, 0)
+dummy = Dummy()
+dummy2 = Dummy()
+dummy3 = Dummy()
 
 d001 = Separator('d001')
 pi001 = Transmitter('pressure')
 li001 = Transmitter('level oil')
-fv001 = Valve('liquid', 2)
+fv001 = Valve('liquid', 1)
 fi001 = Transmitter('flow')
 d002 = Separator('d002')
 li002 = Transmitter('level oil')
+fi002 = Transmitter('flow')
 
 
 def redraw():
 
     screen.fill((128, 128, 128))
+
+    dummy.draw(0, 0)
+    dummy2.draw(50, 5000)
+    dummy3.draw(5000, 0)
 
     pi001.draw(d001, 10, 10)
     li001.draw(d001, 200, 300)
@@ -219,7 +231,7 @@ def redraw():
     d002.draw(fv001, dummy, 600, 300)
     li002.draw(d002, 600, 200)
 
-    print(fps)
+    print(d001.flowInnGas * m3h)
 
     pygame.display.update()
 
@@ -231,11 +243,9 @@ while run:
 
     trueFPS = clock.get_fps()
     if trueFPS < 1:
-        fps = 1
-        m3h = 3600 * fps
+        m3h = 3600 * 30
     else:
-        fps = trueFPS
-        m3h = 3600 * fps
+        m3h = 3600 * trueFPS
     clock.tick(userFPS)
 
     for event in pygame.event.get():
