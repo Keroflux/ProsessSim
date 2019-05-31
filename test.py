@@ -142,11 +142,17 @@ class Valve(object):
             self.x = x
             self.y = y
 
+        if self.opening < 0:
+            self.opening = 0
+
         pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x, self.y + self.height / 2),
                          (source.x + source.width, source.y + source.height), 4)
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width, self.y + self.height / 2),
                          (out_source.x, out_source.y + out_source.height), 4)
+        font = pygame.font.SysFont('arial', 25, True)
+        opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
+        screen.blit(opening, (self.x + 5, self.y))
         if self.typ == 'liquid':
             if source.cubesOil > 0:
                 self.flowOil = self.size * source.pressure * self.opening / m3h
@@ -164,42 +170,69 @@ class Valve(object):
 
 
 class Controller(object):
-    def __init__(self, p=10, i=5, d=0):
-        self.p = p
-        self.i = i
-        self.d = d
+    def __init__(self):
+        self.p = 0
+        self.i = 0
+        self.d = 0
+        self.pid = 0
         self.offsetTime = 0
         self.offset = 0
         self.output = 0
         self.setPoint = 0
         self.x = 0
         self.y = 0
+        self.dProcessValue = [0, 0]  # List that stores the two last values
+        self.dOffset = [0, 0]  # List that stores the two last offset values
 
-    def draw(self, source, target, x=10, y=10):
+    def draw(self, source, target, x=10, y=10, p_value=5, i_value=2, d_value=5):
         self.x = x
         self.y = y
 
-        self.setPoint = 10
+        self.setPoint = 3
         self.offset = self.setPoint - source.value
-        self.output = self.output + self.offset
-        target.opening = target.opening + self.output
+        # Stores the two last values in a list and calculates delta
+        self.dProcessValue.append(source.value)
+        if len(self.dProcessValue) > 2:
+            self.dProcessValue.pop(0)
+        dpv = (self.dProcessValue[1] - self.dProcessValue[0]) / 0.04
+
+        self.dOffset.append(self.offset)
+        if len(self.dOffset) > 2:
+            self.dOffset.pop(0)
+        dof = (self.dOffset[1] - self.dOffset[0]) * 0.04
+
+        self.p = p_value * self.offset
+        self.i = p_value / i_value * dof
+        self.d = - p_value * d_value * dpv
+        self.pid = self.p + self.i + self.d
+
+        self.output = self.pid * 0.04
+
+        target.opening = target.opening - self.output
+        if target.opening < 0:
+            target.opening = 0
+        elif target.opening > 100:
+            target.opening = 100
 
 
 class Dummy(object):
-    def __init__(self, flow_water=0, pressure=0, level=0):
-        m3h = 3600 * 30  # TODO: make draw function and get rid of dummy m3h
+    def __init__(self):
         self.flowOil = 0
-        self.flow = 50 / m3h
+        self.flow = 0
         self.flowGas = 0
-        self.flowWater = flow_water / m3h
-        self.pressure = pressure
-        self.levelOil = level
+        self.flowWater = 0
+        self.pressure = 0
+        self.levelOil = 0
         self.x = 10
         self.y = 10
 
-    def draw(self, flow_oil, flow_gas):
+    def draw(self, flow_oil=50, flow_gas=5000, flow_water=0, pressure=0, level=0):
         self.flowOil = flow_oil / m3h
         self.flowGas = flow_gas / m3h
+        self.flowWater = flow_water / m3h
+        self.flow = 50 / m3h
+        self.pressure = pressure
+        self.levelOil = level
 
 
 def line(start, end):
@@ -218,6 +251,7 @@ fi001 = Transmitter('flow')
 d002 = Separator('d002')
 li002 = Transmitter('level oil')
 fi002 = Transmitter('flow')
+lic001 = Controller()
 
 
 def redraw():
@@ -235,8 +269,7 @@ def redraw():
     d001.draw(dummy2, fv001, 50, 100)
     d002.draw(fv001, dummy, 600, 300)
     li002.draw(d002, 600, 200)
-
-    print(d001.flowInnGas * m3h)
+    lic001.draw(li001, fv001)
 
     pygame.display.update()
 
@@ -248,7 +281,7 @@ while run:
 
     trueFPS = clock.get_fps()
     if trueFPS < 1:
-        m3h = 3600 * 30
+        m3h = 3600 * userFPS
     else:
         m3h = 3600 * trueFPS
     clock.tick(userFPS)
