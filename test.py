@@ -301,7 +301,7 @@ def redraw():
     screen.blit(hz, (300, 5))
 
     font = pygame.font.SysFont('arial', 15, False)
-    pros = font.render(str(round(p, 2)) + '%', 1, (0, 0, 0))
+    pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
     screen.blit(pros, (360, 5))
 
     pygame.display.update()
@@ -316,7 +316,7 @@ while run:
     clock.tick(userFPS)
 
     trueFPS = clock.get_fps()
-    p = trueFPS / userFPS * 100
+    simSpeed = trueFPS / userFPS * 100
     if trueFPS < 0.1:
         timeStep = 1 / userFPS
         m3h = 3600 * userFPS
@@ -343,6 +343,7 @@ while run:
 
     keys = pygame.key.get_pressed()
     for key in keys:
+        # Panning keys
         if keys[pygame.K_LCTRL]:
             speed = 3 / (trueFPS + 0.01)
         else:
@@ -355,21 +356,29 @@ while run:
             panY = panY + speed
         if keys[pygame.K_DOWN]:
             panY = panY - speed
-        if keys[pygame.K_SPACE]:
-            run = False
+        # Pause simulation
+        if keys[pygame.K_SPACE] and run:
             pause = True
+            run = False
+            pygame.time.delay(500)
             print('p')
 
+    # Pause loop
     while pause:
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                pause = False
                 run = False
+
         keys = pygame.key.get_pressed()
         for key in keys:
-            if keys[pygame.K_SPACE] and not run:
-                pause = False
+            # Start simulation
+            if keys[pygame.K_SPACE] and pause:
                 run = True
-
+                pause = False
+                pygame.time.delay(500)
+                print('å')
 
     redraw()
 
