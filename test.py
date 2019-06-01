@@ -20,6 +20,8 @@ zoom = 1
 class Separator(object):
 
     def __init__(self, tag, volume=8):
+        self.id = 'separator'
+        self.tag = tag
         self.pressure = 1
         self.temperature = 0
         self.volumeGas = 0
@@ -40,7 +42,6 @@ class Separator(object):
         self.width = 300
         self.height = 120
 
-        self.tag = tag
         self.x = 0
         self.y = 0
         self.volume = volume
@@ -72,6 +73,7 @@ class Separator(object):
 class Transmitter(object):
 
     def __init__(self, typ):
+        self.id = 'transmitter'
         self.width = 100
         self.height = 50
         self.value = 0
@@ -123,6 +125,7 @@ class Transmitter(object):
 
 class Valve(object):
     def __init__(self, typ, size=2):
+        self.id = 'valve'
         self.width = 100
         self.height = 50
 
@@ -176,6 +179,7 @@ class Valve(object):
 
 class Controller(object):
     def __init__(self):
+        self.id = 'controller'
         self.p = 0
         self.i = 0
         self.d = 0
@@ -222,6 +226,7 @@ class Controller(object):
 
 class Dummy(object):
     def __init__(self):
+        self.id = 'dummy'
         self.flowOil = 0
         self.flow = 0
         self.flowGas = 0
@@ -302,6 +307,7 @@ def redraw():
     pygame.display.update()
 
 
+pause = False
 clicked = False
 run = True
 
@@ -337,14 +343,33 @@ while run:
 
     keys = pygame.key.get_pressed()
     for key in keys:
+        if keys[pygame.K_LCTRL]:
+            speed = 3 / (trueFPS + 0.01)
+        else:
+            speed = 0.3 / (trueFPS + 0.01)
         if keys[pygame.K_LEFT]:
-            panX = panX - 0.01
+            panX = panX + speed
         if keys[pygame.K_RIGHT]:
-            panX = panX + 0.01
+            panX = panX - speed
         if keys[pygame.K_UP]:
-            panY = panY - 0.01
+            panY = panY + speed
         if keys[pygame.K_DOWN]:
-            panY = panY + 0.01
+            panY = panY - speed
+        if keys[pygame.K_SPACE]:
+            run = False
+            pause = True
+            print('p')
+
+    while pause:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+        keys = pygame.key.get_pressed()
+        for key in keys:
+            if keys[pygame.K_SPACE] and not run:
+                pause = False
+                run = True
+
 
     redraw()
 
