@@ -153,19 +153,7 @@ class Valve(object):
 
         pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
 
-        pygame.draw.line(screen, (255, 255, 255), (self.x, self.y + self.height / 2),
-                         (self.x - 50, self.y + self.height / 2), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.x - 50, self.y + self.height / 2),
-                         (self.x - 50, source.y + source.height - 4), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.x - 50, source.y + source.height - 4),
-                         (source.x + source.width - 2, source.y + source.height - 4), 4)
-
-        pygame.draw.line(screen, (255, 255, 255), (self.x + self.width, self.y + self.height / 2),
-                         (self.x + self.width + 50, self.y + self.height / 2), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.x + self.width + 50, self.y + self.height / 2),
-                         (self.x + self.width + 50, out_source.y + out_source.height - 4), 4)
-        pygame.draw.line(screen, (255, 255, 255), (self.x + self.width + 50, out_source.y + out_source.height - 4),
-                         (out_source.x, out_source.y + source.height - 4), 4)
+        pipe(self, source, out_source, 4)
 
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
@@ -250,6 +238,24 @@ class Dummy(object):
         self.flow = 50 / m3h
         self.pressure = pressure
         self.levelOil = level
+
+
+def pipe(start, end, end2, size):
+    # Backwards lines
+    pygame.draw.line(screen, (255, 255, 255), (start.x, start.y + start.height / 2),
+                     (start.x - 50, start.y + start.height / 2), size)
+    pygame.draw.line(screen, (255, 255, 255), (start.x - 50, start.y + start.height / 2),
+                     (start.x - 50, end.y + end.height - size), size)
+    pygame.draw.line(screen, (255, 255, 255), (start.x - 50, end.y + end.height - size),
+                     (end.x + end.width - 2, end.y + end.height - size), size)
+
+    # Forward lines
+    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width, start.y + start.height / 2),
+                     (start.x + start.width + 50, start.y + start.height / 2), size)
+    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width + 50, start.y + start.height / 2),
+                     (start.x + start.width + 50, end2.y + end2.height - size), size)
+    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width + 50, end2.y + end2.height - size),
+                     (end2.x, end2.y + end2.height - size), size)
 
 
 dummy = Dummy()
