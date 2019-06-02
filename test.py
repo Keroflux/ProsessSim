@@ -149,7 +149,7 @@ class Valve(object):
         self.clicked = False
 
     def draw(self, source, out_source, x, y):
-        # TODO: fix this more, panning is bugged
+        # TODO: fix this more, panning is bugged whole in edit mode
         if not self.clicked:
             self.x = x + panX
             self.y = y + panY
@@ -162,10 +162,10 @@ class Valve(object):
             self.y = self.y
             if clicked:
                 self.clicked = True
-                self.x = mPos[0] - self.width / 2 + panX
-                self.y = mPos[1] - self.height / 2 + panY
-                self.newX = self.x
-                self.newY = self.y
+                self.x = mPos[0] - self.width / 2
+                self.y = mPos[1] - self.height / 2
+                self.newX = self.x - panX
+                self.newY = self.y - panY
 
         if self.opening < 0:
             self.opening = 0
