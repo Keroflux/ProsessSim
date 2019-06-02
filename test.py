@@ -5,7 +5,7 @@ import pygame
 
 pygame.init()
 
-wScreen = 1000
+wScreen = 1200
 hScreen = 800
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 
@@ -49,6 +49,7 @@ class Separator(object):
     def draw(self, source, out_source, x=10, y=10):
         self.x = x + panX
         self.y = y + panY
+
         self.width = 300
         self.height = 120
 
@@ -143,15 +144,17 @@ class Valve(object):
 
         self.x = 0
         self.y = 0
+        self.clicked = False
 
     def draw(self, source, out_source, x, y):
-        mPos = pygame.mouse.get_pos()  # TODO: fix this
-        if clicked:
-            self.x = mPos[0] + panX
-            self.y = mPos[1] + panY
-        else:
+
+        if not self.clicked:
             self.x = x + panX
             self.y = y + panY
+        if clicked and edit:
+            self.clicked = True
+            self.x = mPos[0] + panX
+            self.y = mPos[1] + panY
 
         if self.opening < 0:
             self.opening = 0
@@ -308,22 +311,22 @@ def redraw():
     font = pygame.font.SysFont('arial', 15, False)
     hz = font.render(str(round(trueFPS, 2)) + 'Hz', 1, (0, 0, 0))
     screen.blit(hz, (300, 5))
-
     font = pygame.font.SysFont('arial', 15, False)
     pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
     screen.blit(pros, (360, 5))
 
-    pygame.display.update()
+    pygame.display.flip()
 
 
 pause = False
 clicked = False
+edit = False
 run = True
 
 while run:
 
     clock.tick(userFPS)
-
+    mPos = pygame.mouse.get_pos()
     trueFPS = clock.get_fps()
     simSpeed = trueFPS / userFPS * 100
     if trueFPS < 0.1:
@@ -346,9 +349,19 @@ while run:
                 print('zoom out')
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
+
         # Makes the window resizable
         if event.type == pygame.VIDEORESIZE:
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+
+        # Edit mode
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_e and not edit:
+                edit = True
+                print('å')
+            elif event.key == pygame.K_e and edit:
+                edit = False
+                print('æ')
 
     keys = pygame.key.get_pressed()
     for key in keys:
@@ -370,7 +383,6 @@ while run:
             pause = True
             run = False
             pygame.time.delay(500)
-            print('p')
 
     # Pause loop
     while pause:
@@ -387,7 +399,6 @@ while run:
                 run = True
                 pause = False
                 pygame.time.delay(500)
-                print('å')
 
     redraw()
 
