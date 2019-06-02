@@ -52,6 +52,8 @@ class Separator(object):
         self.width = 300
         self.height = 120
 
+        pipe(self, out_source, 4)
+
         pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
         font = pygame.font.SysFont('arial', 25, True)
         tag = font.render(str(self.tag), 1, (255, 255, 255))
@@ -154,9 +156,9 @@ class Valve(object):
         if self.opening < 0:
             self.opening = 0
 
-        pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
+        pipe(self, out_source, 4)
 
-        pipe(self, source, out_source, 4)
+        pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
 
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
@@ -245,22 +247,29 @@ class Dummy(object):
         self.levelOil = level
 
 
-def pipe(start, end, end2, size):
-    # Backwards lines
-    pygame.draw.line(screen, (255, 255, 255), (start.x, start.y + start.height / 2),
-                     (start.x - 50, start.y + start.height / 2), size)
-    pygame.draw.line(screen, (255, 255, 255), (start.x - 50, start.y + start.height / 2),
-                     (start.x - 50, end.y + end.height - size), size)
-    pygame.draw.line(screen, (255, 255, 255), (start.x - 50, end.y + end.height - size),
-                     (end.x + end.width - 2, end.y + end.height - size), size)
+def pipe(start, end, size):
 
-    # Forward lines
-    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width, start.y + start.height / 2),
-                     (start.x + start.width + 50, start.y + start.height / 2), size)
-    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width + 50, start.y + start.height / 2),
-                     (start.x + start.width + 50, end2.y + end2.height - size), size)
-    pygame.draw.line(screen, (255, 255, 255), (start.x + start.width + 50, end2.y + end2.height - size),
-                     (end2.x, end2.y + end2.height - size), size)
+    y1 = 2
+    y2 = 2
+    x1 = 1
+
+    if start.id == 'valve':
+        y1 = start.height / 2
+        x1 = start.x + start.width + 50
+    elif start.id == 'separator':
+        y1 = start.height - size
+        x1 = end.x - 50
+
+    if end.id == 'separator':
+        y2 = end.height - size
+    elif end.id == 'valve':
+        y2 = end.height / 2
+
+    # Draw pipes
+    if end.id != 'dummy':
+        pygame.draw.line(screen, (255, 255, 255), (start.x + start.width - 2, start.y + y1), (x1, start.y + y1), size)
+        pygame.draw.line(screen, (255, 255, 255), (x1, start.y + y1), (x1, end.y + y2), size)
+        pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
 
 
 dummy = Dummy()
