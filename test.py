@@ -46,12 +46,30 @@ class Separator(object):
         self.y = 0
         self.volume = volume
 
-    def draw(self, source, out_source, x=10, y=10):
-        self.x = x + panX
-        self.y = y + panY
+        self.newX = 0
+        self.newY = 0
+        self.clicked = False
 
+    def draw(self, source, out_source, x=10, y=10):
         self.width = 300
         self.height = 120
+
+        if not self.clicked:
+            self.x = x + panX
+            self.y = y + panY
+        if self.clicked and not edit:
+            self.x = self.newX + panX
+            self.y = self.newY + panY
+
+        if edit and is_mouse_inside(self.x, self.y, self.width, self.height):
+            self.x = self.x
+            self.y = self.y
+            if clicked:
+                self.clicked = True
+                self.x = mPos[0] - self.width / 2
+                self.y = mPos[1] - self.height / 2
+                self.newX = self.x - panX
+                self.newY = self.y - panY
 
         pipe(self, out_source, 4)
 
@@ -84,13 +102,32 @@ class Transmitter(object):
         self.y = 0
         self.typ = typ
 
+        self.newX = 0
+        self.newY = 0
+        self.clicked = False
+
     def draw(self, measuring_point, x=10, y=10):
-        self.x = x + panX
-        self.y = y + panY
+
+        if not self.clicked:
+            self.x = x + panX
+            self.y = y + panY
+        if self.clicked and not edit:
+            self.x = self.newX + panX
+            self.y = self.newY + panY
+
+        if edit and is_mouse_inside(self.x, self.y, self.width, self.height):
+            self.x = self.x
+            self.y = self.y
+            if clicked:
+                self.clicked = True
+                self.x = mPos[0] - self.width / 2
+                self.y = mPos[1] - self.height / 2
+                self.newX = self.x - panX
+                self.newY = self.y - panY
 
         pygame.draw.rect(screen, (75, 75, 75), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width / 2, self.y + self.height),
-                         (measuring_point.x, measuring_point.y))
+                         (self.x + self.width / 2, measuring_point.y))
 
         font = pygame.font.SysFont('arial', 25, True)
         if self.typ == 'pressure':
@@ -157,7 +194,7 @@ class Valve(object):
             self.x = self.newX + panX
             self.y = self.newY + panY
 
-        if edit:
+        if edit and is_mouse_inside(self.x, self.y, self.width, self.height):
             self.x = self.x
             self.y = self.y
             if clicked:
@@ -209,7 +246,7 @@ class Controller(object):
         self.dProcessValue = [0, 0]  # List that stores the two last values
         self.dOffset = [0, 0]  # List that stores the two last offset values
 
-    def draw(self, source, target, x=10, y=10, p_value=5, i_value=2, d_value=5):
+    def draw(self, source, target, x=10, y=10, p_value=5, i_value=10, d_value=5):
         self.x = x + panX
         self.y = y + panY
 
@@ -286,6 +323,11 @@ def pipe(start, end, size):
         pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
 
 
+def is_mouse_inside(x, y, width, height):
+    if x < mPos[0] < x + width and y < mPos[1] < y + height:
+        return True
+
+
 dummy = Dummy()
 dummy2 = Dummy()
 dummy3 = Dummy()
@@ -295,7 +337,7 @@ pi001 = Transmitter('pressure')
 li001 = Transmitter('level oil')
 fv001 = Valve('liquid', 1)
 fi001 = Transmitter('flow')
-d002 = Separator('d002')
+d002 = Separator('d002', 80)
 li002 = Transmitter('level oil')
 fi002 = Transmitter('flow')
 lic001 = Controller()
@@ -318,7 +360,7 @@ def redraw():
     li002.draw(d002, 600, 200)
     lic001.draw(li001, fv001)
 
-    # FPS and sim-speed
+    # FPS and sim-speed info
     font = pygame.font.SysFont('arial', 15, False)
     hz = font.render(str(round(trueFPS, 2)) + 'Hz', 1, (0, 0, 0))
     screen.blit(hz, (300, 5))
@@ -369,10 +411,8 @@ while run:
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_e and not edit:
                 edit = True
-                print('å')
             elif event.key == pygame.K_e and edit:
                 edit = False
-                print('æ')
 
     keys = pygame.key.get_pressed()
     for key in keys:
