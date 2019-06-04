@@ -341,6 +341,8 @@ d002 = Separator('d002', 80)
 li002 = Transmitter('level oil')
 fi002 = Transmitter('flow')
 lic001 = Controller()
+# Test of classes in lists
+sep = [Separator('d003'), Separator('d004')]
 
 
 def redraw():
@@ -359,6 +361,8 @@ def redraw():
     d002.draw(fv001, dummy, 700, 300)
     li002.draw(d002, 600, 200)
     lic001.draw(li001, fv001)
+    # Test of drawing from list
+    sep1 = [sep[0].draw(dummy, fv001, 500, 500), sep[1].draw(dummy, fv001, 700, 500)]
 
     # FPS and sim-speed info
     font = pygame.font.SysFont('arial', 15, False)
