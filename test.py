@@ -16,12 +16,22 @@ panX = 0
 panY = 0
 zoom = 1
 
+ambientTemperature = 20
+
 
 class Separator(object):
 
-    def __init__(self, tag, volume=8):
+    def __init__(self, tag, volume=8, volume_water_chamber=4):
+        self.width = 300
+        self.height = 120
+        self.x = 0
+        self.y = 0
+
         self.id = 'separator'
         self.tag = tag
+
+        self.volume = volume
+        self.volume_water_chamber = volume_water_chamber
         self.pressure = 1
         self.temperature = 0
         self.volumeGas = 0
@@ -32,19 +42,9 @@ class Separator(object):
         self.levelWater = 0
         self.cubesWater = 0
 
-        self.flowInnOil = 0
-        self.flowInnGas = 0
-        self.flowInnWater = 0
-
-        self.waterOilSep = 0
-        self.gasOilSep = 0
-
-        self.width = 300
-        self.height = 120
-
-        self.x = 0
-        self.y = 0
-        self.volume = volume
+        self.waterInOil = 0
+        self.gasInOil = 0
+        self.oilInGas = 0
 
         self.newX = 0
         self.newY = 0
@@ -53,6 +53,9 @@ class Separator(object):
     def draw(self, source, out_source, x=10, y=10):
         self.width = 300
         self.height = 120
+        # TODO: fix temp calc
+        td = source.temperature / ambientTemperature
+        self.temperature = source.temperature - td
 
         if not self.clicked:
             self.x = x + panX
@@ -77,18 +80,40 @@ class Separator(object):
         font = pygame.font.SysFont('arial', 25, True)
         tag = font.render(str(self.tag), 1, (255, 255, 255))
         screen.blit(tag, (self.x + 5, self.y))
-        self.flowInnOil = source.flowOil
-        self.flowInnGas = source.flowGas
-        self.flowInnWater = source.flowWater
 
-        self.cubesOil = self.cubesOil - out_source.flowOil + self.flowInnOil
-        self.volumeLeft = self.volume - self.cubesOil
-        self.volumeGas = self.volumeGas + self.flowInnGas
-
-        # TODO: separation efficiency calculation for oil/gas oil/water
+        self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
+        self.cubesWater = self.cubesWater - out_source.flowWater + source.flowWater
+        self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
+        self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
 
         self.pressure = self.volumeGas / self.volumeLeft
-        self.levelOil = self.cubesOil / self.volume * 100
+
+        # TODO: separation efficiency calculation oil in water(draft), oil in gas, gas in oil(draft)
+        # Oil level
+        if 100 > self.levelOil > 0:
+            self.levelOil = self.cubesOil / self.volume * 100
+            # Gas in oil calc
+            self.gasInOil = self.pressure / self.volume
+        elif self.levelOil <= 0:
+            self.levelOil = 0
+            self.levelOil = self.cubesOil / self.volume * 100
+        else:
+            self.levelOil = 100
+            # Gas in oil calc
+            self.gasInOil = self.pressure / self.levelOil / self.volume
+
+        # Water level
+        if 100 > self.levelWater > 0:
+            self.levelWater = self.cubesWater / self.volume_water_chamber * 100
+            # Water in oil calc
+            self.waterInOil = self.levelWater * (source.flowOil + source.flowWater) / self.volume * (trueFPS / 2)
+        elif self.levelWater <= 0:
+            self.levelWater = 0
+            self.levelWater = self.cubesWater / self.volume_water_chamber * 100
+        else:
+            self.levelWater = 100
+            # Water in oil calc
+            self.waterInOil = source.flowWater / source.flowOil
 
 
 class Transmitter(object):
@@ -150,7 +175,7 @@ class Transmitter(object):
             screen.blit(content, (self.x + 5, self.y))
             screen.blit(value, (self.x + 5, self.y + 20))
 
-            self.value = measuring_point.flowWater
+            self.value = measuring_point.levelWater
 
         elif self.typ == 'flow':
             content = font.render(str(round(measuring_point.flow * m3h, 2)) + 'm3/h', 1, (255, 255, 255))
@@ -175,6 +200,8 @@ class Valve(object):
         self.flowOil = 0
         self.flowGas = 0
         self.flowWater = 0
+        self.dP = 0
+        self.temperature = 0
 
         self.size = size
         self.typ = typ
@@ -186,6 +213,7 @@ class Valve(object):
         self.clicked = False
 
     def draw(self, source, out_source, x, y):
+        self.dP = source.pressure - out_source.pressure
         # TODO: fix this more, panning is bugged whole in edit mode
         if not self.clicked:
             self.x = x + panX
@@ -214,20 +242,32 @@ class Valve(object):
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
         screen.blit(opening, (self.x + 5, self.y))
-        if self.typ == 'liquid':
+        if self.typ == 'oil':
             if source.cubesOil > 0:
-                self.flowOil = self.size * source.pressure * self.opening / m3h
+                self.flowOil = self.size * self.dP * self.opening / m3h
+                self.flowGas = self.flowOil * source.gasInOil
+                self.flowWater = self.flowOil * source.waterInOil
                 # TODO: flow water and gas calculation
             else:
                 self.flowOil = 0
+                self.flowGas = self.size * self.dP * self.opening / m3h
 
             self.flow = self.flowOil + self.flowWater
 
         elif self.typ == 'gas':
-            self.flowGas = self.size * source.pressure - out_source.pressure * self.opening / m3h
+            self.flowGas = self.size * self.dP * self.opening / m3h
             # TODO: flow water and oil calculation
 
             self.flow = self.flowGas
+
+        elif self.typ == 'water':
+            if source.cubesWater > 0:
+                self.flowWater = self.size * self.dP * self.opening / m3h
+            else:
+                self.flowWater = 0
+                if source.cubesOil > 0:
+                    self.flowOil = self.size * self.dP * self.opening / m3h
+                    self.flowGas = self.flowOil * source.gasInOil
 
 
 class Controller(object):
@@ -286,8 +326,10 @@ class Dummy(object):
         self.flowWater = 0
         self.pressure = 0
         self.levelOil = 0
+        self.temperature = 70
         self.x = 10
         self.y = 10
+        self.opening = 0
 
     def draw(self, flow_oil=50, flow_gas=5000, flow_water=0, pressure=0, level=0):
         self.flowOil = flow_oil / m3h
@@ -335,7 +377,8 @@ dummy3 = Dummy()
 d001 = Separator('d001')
 pi001 = Transmitter('pressure')
 li001 = Transmitter('level oil')
-fv001 = Valve('liquid', 1)
+li003 = Transmitter('level water')
+fv001 = Valve('oil', 1)
 fi001 = Transmitter('flow')
 d002 = Separator('d002', 80)
 li002 = Transmitter('level oil')
@@ -350,7 +393,7 @@ def redraw():
     screen.fill((128, 128, 128))
 
     dummy.draw(0, 0)
-    dummy2.draw(50, 5000)
+    dummy2.draw(50, 5000, 30)
     dummy3.draw(5000, 0)
 
     pi001.draw(d001, 10, 10)
@@ -361,25 +404,35 @@ def redraw():
     d002.draw(fv001, dummy, 700, 300)
     li002.draw(d002, 600, 200)
     lic001.draw(li001, fv001)
+    li003.draw(d001, 150, 10)
     # Test of drawing from list
-    sep1 = [sep[0].draw(dummy, fv001, 500, 500), sep[1].draw(dummy, fv001, 700, 500)]
 
     # FPS and sim-speed info
     font = pygame.font.SysFont('arial', 15, False)
     hz = font.render(str(round(trueFPS, 2)) + 'Hz', 1, (0, 0, 0))
     screen.blit(hz, (300, 5))
-    font = pygame.font.SysFont('arial', 15, False)
     pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
     screen.blit(pros, (360, 5))
 
+    debug = font.render(str(d001.gasInOil), 1, (0, 0, 0))
+    screen.blit(debug, (460, 5))
+    debug2 = font.render(str(fv001.flowGas * m3h), 1, (0, 0, 0))
+    screen.blit(debug2, (460, 25))
+
     pygame.display.flip()
+
+
+def new_separator(x=10, y=10, tag='doo1', source=dummy, out_source=fv001, volume=8, volume_water_chamber=4):
+    sep.append(Separator(tag, volume, volume_water_chamber))
+    for i in range(len(sep)):
+        sep1.append(sep[i].draw(dummy, fv001, 1000, 500))
 
 
 pause = False
 clicked = False
 edit = False
 run = True
-
+sep1 = [sep[0].draw(dummy, fv001, 500, 500), sep[1].draw(dummy, fv001, 700, 500)]
 while run:
 
     clock.tick(userFPS)
@@ -417,6 +470,9 @@ while run:
                 edit = True
             elif event.key == pygame.K_e and edit:
                 edit = False
+
+            if event.key == pygame.K_n:
+                new_separator()
 
     keys = pygame.key.get_pressed()
     for key in keys:
@@ -456,5 +512,5 @@ while run:
                 pygame.time.delay(500)
 
     redraw()
-
+    print(sep[1])
 pygame.quit()
