@@ -2,6 +2,7 @@
 # 0 = oil, 1 = gas, 2 = water, 3 = pressure, 4 = temperature
 
 import pygame
+from buttons import button, is_mouse_inside
 
 pygame.init()
 
@@ -17,6 +18,10 @@ panY = 0
 zoom = 1
 
 ambientTemperature = 20
+
+pause = False
+clicked = False
+edit = False
 
 
 class Separator(object):
@@ -81,7 +86,11 @@ class Separator(object):
         tag = font.render(str(self.tag), 1, (255, 255, 255))
         screen.blit(tag, (self.x + 5, self.y))
 
-        self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
+        if self.levelWater >= 1:
+            self.cubesOil = self.cubesOil + source.flowOil + source.flowWater - out_source.flowOil
+        else:
+            self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
+
         self.cubesWater = self.cubesWater - out_source.flowWater + source.flowWater
         self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
         self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
@@ -95,7 +104,7 @@ class Separator(object):
             # Gas in oil calc
             self.gasInOil = self.pressure / self.volume
         elif self.levelOil <= 0:
-            self.levelOil = 0
+            self.cubesOil = 0 + source.flowOil
             self.levelOil = self.cubesOil / self.volume * 100
         else:
             self.levelOil = 100
@@ -103,7 +112,7 @@ class Separator(object):
             self.gasInOil = self.pressure / self.levelOil / self.volume
 
         # Water level
-        if 100 > self.levelWater > 0:
+        if 1 > self.levelWater > 0:
             self.levelWater = self.cubesWater / self.volume_water_chamber * 100
             # Water in oil calc
             self.waterInOil = self.levelWater * (source.flowOil + source.flowWater) / self.volume * (trueFPS / 2)
@@ -111,7 +120,7 @@ class Separator(object):
             self.levelWater = 0
             self.levelWater = self.cubesWater / self.volume_water_chamber * 100
         else:
-            self.levelWater = 100
+            self.levelWater = 1
             # Water in oil calc
             self.waterInOil = source.flowWater / source.flowOil
 
@@ -242,6 +251,7 @@ class Valve(object):
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
         screen.blit(opening, (self.x + 5, self.y))
+        # TODO: fix calculations
         if self.typ == 'oil':
             if source.cubesOil > 0:
                 self.flowOil = self.size * self.dP * self.opening / m3h
@@ -252,7 +262,7 @@ class Valve(object):
                 self.flowOil = 0
                 self.flowGas = self.size * self.dP * self.opening / m3h
 
-            self.flow = self.flowOil + self.flowWater
+            self.flow = self.flowOil
 
         elif self.typ == 'gas':
             self.flowGas = self.size * self.dP * self.opening / m3h
@@ -365,11 +375,6 @@ def pipe(start, end, size):
         pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
 
 
-def is_mouse_inside(x, y, width, height):
-    if x < mPos[0] < x + width and y < mPos[1] < y + height:
-        return True
-
-
 dummy = Dummy()
 dummy2 = Dummy()
 dummy3 = Dummy()
@@ -385,16 +390,19 @@ li002 = Transmitter('level oil')
 fi002 = Transmitter('flow')
 lic001 = Controller()
 # Test of classes in lists
-sep = [Separator('d003'), Separator('d004')]
+sep = []
+sepSet = []
+# test
+sepTag = {}
 
 
 def redraw():
 
     screen.fill((128, 128, 128))
-
     dummy.draw(0, 0)
     dummy2.draw(50, 5000, 30)
     dummy3.draw(5000, 0)
+    button(600 + panX, 600 + panY, 100, 50, screen, 'test')
 
     pi001.draw(d001, 10, 10)
     li001.draw(d001, 200, 300)
@@ -414,25 +422,30 @@ def redraw():
     pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
     screen.blit(pros, (360, 5))
 
-    debug = font.render(str(d001.gasInOil), 1, (0, 0, 0))
+    debug = font.render(str(fv001.flowOil * m3h), 1, (0, 0, 0))
     screen.blit(debug, (460, 5))
-    debug2 = font.render(str(fv001.flowGas * m3h), 1, (0, 0, 0))
+    debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
     screen.blit(debug2, (460, 25))
+    sep_draw()
 
     pygame.display.flip()
 
 
 def new_separator(x=10, y=10, tag='doo1', source=dummy, out_source=fv001, volume=8, volume_water_chamber=4):
     sep.append(Separator(tag, volume, volume_water_chamber))
-    for i in range(len(sep)):
-        sep1.append(sep[i].draw(dummy, fv001, 1000, 500))
+    sepSet.append((source, out_source, 10, 10))
+    # Test
+    sepTag.update({'tag': sep[0].tag, 'source': sepSet[0][0]})
 
 
-pause = False
-clicked = False
-edit = False
+def sep_draw():
+    for j in range(len(sepSet)):
+        sep[j].draw(sepSet[j][0], sepSet[j][1], sepSet[j][2], sepSet[j][3],)
+
+
 run = True
-sep1 = [sep[0].draw(dummy, fv001, 500, 500), sep[1].draw(dummy, fv001, 700, 500)]
+new_separator()
+
 while run:
 
     clock.tick(userFPS)
@@ -497,7 +510,7 @@ while run:
 
     # Pause loop
     while pause:
-
+        clock.tick(userFPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pause = False
@@ -512,5 +525,5 @@ while run:
                 pygame.time.delay(500)
 
     redraw()
-    print(sep[1])
+    print(sep[0].cubesOil)
 pygame.quit()
