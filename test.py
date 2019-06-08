@@ -389,11 +389,12 @@ d002 = Separator('d002', 80)
 li002 = Transmitter('level oil')
 fi002 = Transmitter('flow')
 lic001 = Controller()
-# Test of classes in lists
-sep = []
-sepSet = []
-# test
+
+# Drawing from dict and lists
 sepTag = {}
+sepSetting = []
+sepDraw = []
+sepSettingD = {}  # Blank at the moment
 
 
 def redraw():
@@ -402,7 +403,7 @@ def redraw():
     dummy.draw(0, 0)
     dummy2.draw(50, 5000, 30)
     dummy3.draw(5000, 0)
-    button(600 + panX, 600 + panY, 100, 50, screen, 'test')
+    button(600, 600, 100, 50, screen, 'test')
 
     pi001.draw(d001, 10, 10)
     li001.draw(d001, 200, 300)
@@ -410,10 +411,11 @@ def redraw():
     fi001.draw(fv001, 400, 100)
     d001.draw(dummy2, fv001, 50, 100)
     d002.draw(fv001, dummy, 700, 300)
-    li002.draw(d002, 600, 200)
+    li002.draw(sepTag.get('dpp1'), 600, 200)
     lic001.draw(li001, fv001)
     li003.draw(d001, 150, 10)
     # Test of drawing from list
+    draw_sep()
 
     # FPS and sim-speed info
     font = pygame.font.SysFont('arial', 15, False)
@@ -426,25 +428,30 @@ def redraw():
     screen.blit(debug, (460, 5))
     debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
     screen.blit(debug2, (460, 25))
-    sep_draw()
 
     pygame.display.flip()
 
 
-def new_separator(x=10, y=10, tag='doo1', source=dummy, out_source=fv001, volume=8, volume_water_chamber=4):
-    sep.append(Separator(tag, volume, volume_water_chamber))
-    sepSet.append((source, out_source, 10, 10))
-    # Test
-    sepTag.update({'tag': sep[0].tag, 'source': sepSet[0][0]})
+def new_sep(tag, volume, volume_water, source, out_source, x, y):
+    sepTag.setdefault(tag, Separator(tag, volume, volume_water))
+    sepSetting.append((source, out_source, x, y))
+    sepSettingD.setdefault(tag, (source, out_source, x, y)) # TODO: Fix this
+    sepDraw.append(sepTag.get(tag))
 
 
-def sep_draw():
-    for j in range(len(sepSet)):
-        sep[j].draw(sepSet[j][0], sepSet[j][1], sepSet[j][2], sepSet[j][3],)
+def draw_sep():
+    for i in range(len(sepDraw)):
+        sepDraw[i].draw(sepSetting[i][0], sepSetting[i][1], sepSetting[i][2], sepSetting[i][3])
+    '''for name in sepSettingD.keys():
+        print(name)
+        sepTag.get(name).draw(sepSettingD.get(name))
+        print(sepSettingD.get(name.strip('()')))'''
 
 
 run = True
-new_separator()
+
+new_sep('dpp1', 8, 4, dummy2, fv001, 500, 500)
+new_sep('dpp2', 8, 4, dummy2, fv001, 10, 500)
 
 while run:
 
@@ -525,5 +532,5 @@ while run:
                 pygame.time.delay(500)
 
     redraw()
-    print(sep[0].cubesOil)
+
 pygame.quit()
