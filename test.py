@@ -2,25 +2,26 @@
 # 0 = oil, 1 = gas, 2 = water, 3 = pressure, 4 = temperature
 
 import pygame
-from buttons import button, is_mouse_inside
+from buttons import is_mouse_inside
 
 pygame.init()
 
 wScreen = 1200
 hScreen = 800
+panX = 0
+panY = 0
+zoom = 1
+
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 
 userFPS = 30
 clock = pygame.time.Clock()
 
-panX = 0
-panY = 0
-zoom = 1
-
 ambientTemperature = 20
 
 pause = False
 clicked = False
+clickCount = 0
 edit = False
 
 
@@ -54,6 +55,7 @@ class Separator(object):
         self.newX = 0
         self.newY = 0
         self.clicked = False
+        self.rect = 0
 
     def draw(self, source, out_source, x=10, y=10):
         self.width = 300
@@ -62,6 +64,13 @@ class Separator(object):
         td = source.temperature / ambientTemperature
         self.temperature = source.temperature - td
 
+        pipe(self, out_source, 4)
+
+        self.rect = pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
+
+        if self.rect.collidepoint(mPos):
+            print(self.tag)
+
         if not self.clicked:
             self.x = x + panX
             self.y = y + panY
@@ -69,7 +78,7 @@ class Separator(object):
             self.x = self.newX + panX
             self.y = self.newY + panY
 
-        if edit and is_mouse_inside(self.x, self.y, self.width, self.height):
+        if edit and self.rect.collidepoint(mPos):
             self.x = self.x
             self.y = self.y
             if clicked:
@@ -79,9 +88,6 @@ class Separator(object):
                 self.newX = self.x - panX
                 self.newY = self.y - panY
 
-        pipe(self, out_source, 4)
-
-        pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
         font = pygame.font.SysFont('arial', 25, True)
         tag = font.render(str(self.tag), 1, (255, 255, 255))
         screen.blit(tag, (self.x + 5, self.y))
@@ -127,7 +133,7 @@ class Separator(object):
 
 class Transmitter(object):
 
-    def __init__(self, typ):
+    def __init__(self, typ, tag):
         self.id = 'transmitter'
         self.width = 100
         self.height = 50
@@ -135,6 +141,7 @@ class Transmitter(object):
         self.x = 0
         self.y = 0
         self.typ = typ
+        self.tag = tag
 
         self.newX = 0
         self.newY = 0
@@ -350,6 +357,24 @@ class Dummy(object):
         self.levelOil = level
 
 
+# Draw default stuff
+dummy = Dummy()
+dummy2 = Dummy()
+dummy3 = Dummy()
+
+d001 = Separator('d001')
+pi001 = Transmitter('pressure', 'pi001')
+li001 = Transmitter('level oil', 'li001')
+li003 = Transmitter('level water', 'li003')
+fv001 = Valve('oil', 1)
+fi001 = Transmitter('flow', 'fi001')
+d002 = Separator('d002', 80)
+li002 = Transmitter('level oil', 'li002')
+fi002 = Transmitter('flow', 'fi002')
+lic001 = Controller()
+
+
+# Functions
 def pipe(start, end, size):
 
     y1 = 2
@@ -375,26 +400,68 @@ def pipe(start, end, size):
         pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
 
 
-dummy = Dummy()
-dummy2 = Dummy()
-dummy3 = Dummy()
-
-d001 = Separator('d001')
-pi001 = Transmitter('pressure')
-li001 = Transmitter('level oil')
-li003 = Transmitter('level water')
-fv001 = Valve('oil', 1)
-fi001 = Transmitter('flow')
-d002 = Separator('d002', 80)
-li002 = Transmitter('level oil')
-fi002 = Transmitter('flow')
-lic001 = Controller()
-
 # Drawing from dict and lists
-sepTag = {}
-sepSetting = []
-sepDraw = []
+separator = {}
+separatorSetting = []
+separatorDraw = []
 sepSettingD = {}  # Blank at the moment
+
+transmitter = {}
+transmitterSetting = []
+transmitterDraw = []
+
+
+def new_sep(tag='ddd', volume=8, volume_water=4, source=dummy2, out_source=fv001, x=1000, y=100):
+    separator.setdefault(tag, Separator(tag, volume, volume_water))
+    separatorSetting.append((source, out_source, x, y))
+    # sepSettingD.setdefault(tag, (source, out_source, x, y))  # TODO: Fix this
+    separatorDraw.append(separator.get(tag))
+
+
+def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=dummy):
+    transmitter.setdefault(tag, Transmitter(typ, tag))
+    transmitterSetting.append((source, x, y))
+    transmitterDraw.append(transmitter.get(tag))
+
+
+def draw_sep():
+    for i in range(len(separatorDraw)):
+        separatorDraw[i].draw(separatorSetting[i][0], separatorSetting[i][1], separatorSetting[i][2], separatorSetting[i][3])
+    '''for name in sepSettingD.keys():
+        print(name)
+        sepTag.get(name).draw(sepSettingD.get(name))
+        print(sepSettingD.get(name.strip('()')))'''
+
+
+def draw_transmitter():
+    for i in range(len(transmitterDraw)):
+        transmitterDraw[i].draw(transmitterSetting[i][0], transmitterSetting[i][1], transmitterSetting[i][2])
+
+
+def pause_sim():
+    global pause
+    if pause:
+        pause = False
+    else:
+        pause = True
+
+
+def button(x, y, width, height, msg='BUTTON', func=None):
+    global clickCount
+    rect = pygame.draw.rect(screen, (0, 100, 0), (x, y, width, height))
+    font = pygame.font.SysFont('arial', 25, True)
+    text = font.render((str(msg)), 1, (255, 255, 255))
+    screen.blit(text, (rect.center[0], rect.center[1]))
+
+    if clicked and rect.collidepoint(mPos) and clickCount == 0:
+        new_sep(input('tag:'), int(input('volume:')))
+        new_transmitter()
+        clickCount += 1
+
+
+# Drawing from lists
+new_sep('dpp1', 8, 4, dummy2, fv001, 500, 500)
+new_sep('dpp2', 8, 4, dummy2, fv001, 10, 500)
 
 
 def redraw():
@@ -403,7 +470,7 @@ def redraw():
     dummy.draw(0, 0)
     dummy2.draw(50, 5000, 30)
     dummy3.draw(5000, 0)
-    button(600, 600, 100, 50, screen, 'test')
+    button(rW / 3, rH - 50, 100, 50, 'test')
 
     pi001.draw(d001, 10, 10)
     li001.draw(d001, 200, 300)
@@ -411,11 +478,12 @@ def redraw():
     fi001.draw(fv001, 400, 100)
     d001.draw(dummy2, fv001, 50, 100)
     d002.draw(fv001, dummy, 700, 300)
-    li002.draw(sepTag.get('dpp1'), 600, 200)
+    li002.draw(separator.get('dpp1'), 600, 200)
     lic001.draw(li001, fv001)
     li003.draw(d001, 150, 10)
     # Test of drawing from list
     draw_sep()
+    draw_transmitter()
 
     # FPS and sim-speed info
     font = pygame.font.SysFont('arial', 15, False)
@@ -423,7 +491,7 @@ def redraw():
     screen.blit(hz, (300, 5))
     pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
     screen.blit(pros, (360, 5))
-
+    # Debug text
     debug = font.render(str(fv001.flowOil * m3h), 1, (0, 0, 0))
     screen.blit(debug, (460, 5))
     debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
@@ -432,29 +500,11 @@ def redraw():
     pygame.display.flip()
 
 
-def new_sep(tag, volume, volume_water, source, out_source, x, y):
-    sepTag.setdefault(tag, Separator(tag, volume, volume_water))
-    sepSetting.append((source, out_source, x, y))
-    sepSettingD.setdefault(tag, (source, out_source, x, y)) # TODO: Fix this
-    sepDraw.append(sepTag.get(tag))
-
-
-def draw_sep():
-    for i in range(len(sepDraw)):
-        sepDraw[i].draw(sepSetting[i][0], sepSetting[i][1], sepSetting[i][2], sepSetting[i][3])
-    '''for name in sepSettingD.keys():
-        print(name)
-        sepTag.get(name).draw(sepSettingD.get(name))
-        print(sepSettingD.get(name.strip('()')))'''
-
-
 run = True
-
-new_sep('dpp1', 8, 4, dummy2, fv001, 500, 500)
-new_sep('dpp2', 8, 4, dummy2, fv001, 10, 500)
-
 while run:
 
+    rW = screen.get_width()   # Gets current width of the screen
+    rH = screen.get_height()  # Gets current height of the screen
     clock.tick(userFPS)
     mPos = pygame.mouse.get_pos()
     trueFPS = clock.get_fps()
@@ -479,6 +529,7 @@ while run:
                 print('zoom out')
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
+            clickCount = 0
 
         # Makes the window resizable
         if event.type == pygame.VIDEORESIZE:
@@ -490,9 +541,6 @@ while run:
                 edit = True
             elif event.key == pygame.K_e and edit:
                 edit = False
-
-            if event.key == pygame.K_n:
-                new_separator()
 
     keys = pygame.key.get_pressed()
     for key in keys:
@@ -516,6 +564,7 @@ while run:
             pygame.time.delay(500)
 
     # Pause loop
+    # TODO: Fix pause loop
     while pause:
         clock.tick(userFPS)
         for event in pygame.event.get():
