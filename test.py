@@ -2,7 +2,9 @@
 # 0 = oil, 1 = gas, 2 = water, 3 = pressure, 4 = temperature
 
 import pygame
+import sgc
 from buttons import is_mouse_inside
+from sgc.locals import *
 
 pygame.init()
 
@@ -12,7 +14,8 @@ panX = 0
 panY = 0
 zoom = 1
 
-screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
+#screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
+screen = sgc.surface.Screen((640,480))
 
 userFPS = 30
 clock = pygame.time.Clock()
@@ -378,6 +381,8 @@ li002 = Transmitter('level oil', 'li002')
 fi002 = Transmitter('flow', 'fi002')
 lic001 = Controller()
 
+btn = sgc.Button(label='click', pos=(1000, 200))
+btn.add(0)
 
 # Functions
 def pipe(start, end, size):
@@ -503,7 +508,7 @@ def redraw():
     screen.blit(debug, (460, 5))
     debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
     screen.blit(debug2, (460, 25))
-
+    sgc.update(clock.tick(userFPS))
     pygame.display.flip()
 
 
@@ -524,6 +529,7 @@ while run:
         timeStep = 1 / trueFPS
 
     for event in pygame.event.get():
+        sgc.event(event)
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -537,6 +543,8 @@ while run:
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
             clickCount = 0
+        if event.type == GUI:
+            print(event)
 
         # Makes the window resizable
         if event.type == pygame.VIDEORESIZE:
