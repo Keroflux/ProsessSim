@@ -92,43 +92,44 @@ class Separator(object):
         tag = font.render(str(self.tag), 1, (255, 255, 255))
         screen.blit(tag, (self.x + 5, self.y))
 
-        if self.levelWater >= 1:
-            self.cubesOil = self.cubesOil + source.flowOil + source.flowWater - out_source.flowOil
-        else:
-            self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
+        if not pause:
+            if self.levelWater >= 1:
+                self.cubesOil = self.cubesOil + source.flowOil + source.flowWater - out_source.flowOil
+            else:
+                self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
 
-        self.cubesWater = self.cubesWater - out_source.flowWater + source.flowWater
-        self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
-        self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
+            self.cubesWater = self.cubesWater - out_source.flowWater + source.flowWater
+            self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
+            self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
 
-        self.pressure = self.volumeGas / self.volumeLeft
+            self.pressure = self.volumeGas / self.volumeLeft
 
-        # TODO: separation efficiency calculation oil in water(draft), oil in gas, gas in oil(draft)
-        # Oil level
-        if 100 > self.levelOil > 0:
-            self.levelOil = self.cubesOil / self.volume * 100
-            # Gas in oil calc
-            self.gasInOil = self.pressure / self.volume
-        elif self.levelOil <= 0:
-            self.cubesOil = 0 + source.flowOil
-            self.levelOil = self.cubesOil / self.volume * 100
-        else:
-            self.levelOil = 100
-            # Gas in oil calc
-            self.gasInOil = self.pressure / self.levelOil / self.volume
+            # TODO: separation efficiency calculation oil in water(draft), oil in gas, gas in oil(draft)
+            # Oil level
+            if 100 > self.levelOil > 0:
+                self.levelOil = self.cubesOil / self.volume * 100
+                # Gas in oil calc
+                self.gasInOil = self.pressure / self.volume
+            elif self.levelOil <= 0:
+                self.cubesOil = 0 + source.flowOil
+                self.levelOil = self.cubesOil / self.volume * 100
+            else:
+                self.levelOil = 100
+                # Gas in oil calc
+                self.gasInOil = self.pressure / self.levelOil / self.volume
 
-        # Water level
-        if 1 > self.levelWater > 0:
-            self.levelWater = self.cubesWater / self.volume_water_chamber * 100
-            # Water in oil calc
-            self.waterInOil = self.levelWater * (source.flowOil + source.flowWater) / self.volume * (trueFPS / 2)
-        elif self.levelWater <= 0:
-            self.levelWater = 0
-            self.levelWater = self.cubesWater / self.volume_water_chamber * 100
-        else:
-            self.levelWater = 1
-            # Water in oil calc
-            self.waterInOil = source.flowWater / source.flowOil
+            # Water level
+            if 1 > self.levelWater > 0:
+                self.levelWater = self.cubesWater / self.volume_water_chamber * 100
+                # Water in oil calc
+                self.waterInOil = self.levelWater * (source.flowOil + source.flowWater) / self.volume * (trueFPS / 2)
+            elif self.levelWater <= 0:
+                self.levelWater = 0
+                self.levelWater = self.cubesWater / self.volume_water_chamber * 100
+            else:
+                self.levelWater = 1
+                # Water in oil calc
+                self.waterInOil = source.flowWater / source.flowOil
 
 
 class Transmitter(object):
@@ -258,33 +259,35 @@ class Valve(object):
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
         screen.blit(opening, (self.x + 5, self.y))
+
         # TODO: fix calculations
-        if self.typ == 'oil':
-            if source.cubesOil > 0:
-                self.flowOil = self.size * self.dP * self.opening / m3h
-                self.flowGas = self.flowOil * source.gasInOil
-                self.flowWater = self.flowOil * source.waterInOil
-                # TODO: flow water and gas calculation
-            else:
-                self.flowOil = 0
-                self.flowGas = self.size * self.dP * self.opening / m3h
-
-            self.flow = self.flowOil
-
-        elif self.typ == 'gas':
-            self.flowGas = self.size * self.dP * self.opening / m3h
-            # TODO: flow water and oil calculation
-
-            self.flow = self.flowGas
-
-        elif self.typ == 'water':
-            if source.cubesWater > 0:
-                self.flowWater = self.size * self.dP * self.opening / m3h
-            else:
-                self.flowWater = 0
+        if not pause:
+            if self.typ == 'oil':
                 if source.cubesOil > 0:
                     self.flowOil = self.size * self.dP * self.opening / m3h
                     self.flowGas = self.flowOil * source.gasInOil
+                    self.flowWater = self.flowOil * source.waterInOil
+                    # TODO: flow water and gas calculation
+                else:
+                    self.flowOil = 0
+                    self.flowGas = self.size * self.dP * self.opening / m3h
+
+                self.flow = self.flowOil
+
+            elif self.typ == 'gas':
+                self.flowGas = self.size * self.dP * self.opening / m3h
+                # TODO: flow water and oil calculation
+
+                self.flow = self.flowGas
+
+            elif self.typ == 'water':
+                if source.cubesWater > 0:
+                    self.flowWater = self.size * self.dP * self.opening / m3h
+                else:
+                    self.flowWater = 0
+                    if source.cubesOil > 0:
+                        self.flowOil = self.size * self.dP * self.opening / m3h
+                        self.flowGas = self.flowOil * source.gasInOil
 
 
 class Controller(object):
@@ -308,30 +311,32 @@ class Controller(object):
         self.y = y + panY
 
         self.setPoint = 3
-        self.offset = self.setPoint - source.value
-        # Stores the two last values in a list and calculates delta
-        self.dProcessValue.append(source.value)
-        if len(self.dProcessValue) > 2:
-            self.dProcessValue.pop(0)
-        dpv = (self.dProcessValue[1] - self.dProcessValue[0]) / timeStep
 
-        self.dOffset.append(self.offset)
-        if len(self.dOffset) > 2:
-            self.dOffset.pop(0)
-        dof = (self.dOffset[1] - self.dOffset[0]) * timeStep
+        if not pause:
+            self.offset = self.setPoint - source.value
+            # Stores the two last values in a list and calculates delta
+            self.dProcessValue.append(source.value)
+            if len(self.dProcessValue) > 2:
+                self.dProcessValue.pop(0)
+            dpv = (self.dProcessValue[1] - self.dProcessValue[0]) / timeStep
 
-        self.p = p_value * self.offset
-        self.i = p_value / i_value * dof
-        self.d = - p_value * d_value * dpv
-        self.pid = self.p + self.i + self.d
+            self.dOffset.append(self.offset)
+            if len(self.dOffset) > 2:
+                self.dOffset.pop(0)
+            dof = (self.dOffset[1] - self.dOffset[0]) * timeStep
 
-        self.output = self.pid * timeStep
+            self.p = p_value * self.offset
+            self.i = p_value / i_value * dof
+            self.d = - p_value * d_value * dpv
+            self.pid = self.p + self.i + self.d
 
-        target.opening = target.opening - self.output
-        if target.opening < 0:
-            target.opening = 0
-        elif target.opening > 100:
-            target.opening = 100
+            self.output = self.pid * timeStep
+
+            target.opening = target.opening - self.output
+            if target.opening < 0:
+                target.opening = 0
+            elif target.opening > 100:
+                target.opening = 100
 
 
 class Dummy(object):
@@ -454,8 +459,10 @@ def button(x, y, width, height, msg='BUTTON', func=None):
     screen.blit(text, (rect.center[0], rect.center[1]))
 
     if clicked and rect.collidepoint(mPos) and clickCount == 0:
-        new_sep(input('tag:'), int(input('volume:')))
-        new_transmitter()
+        new_sep('dpp3', 8, 4, dummy2, fv001, 500, 200)
+        s = input()
+        s = separator.get(s)
+        new_transmitter('111', 'level oil', 100, 100, s)
         clickCount += 1
 
 
@@ -503,8 +510,8 @@ def redraw():
 run = True
 while run:
 
-    rW = screen.get_width()   # Gets current width of the screen
-    rH = screen.get_height()  # Gets current height of the screen
+    rW = screen.get_width()        # Gets current width of the screen
+    rH = screen.get_height()       # Gets current height of the screen
     clock.tick(userFPS)
     mPos = pygame.mouse.get_pos()
     trueFPS = clock.get_fps()
@@ -541,6 +548,10 @@ while run:
                 edit = True
             elif event.key == pygame.K_e and edit:
                 edit = False
+            if event.key == pygame.K_SPACE and not pause:
+                pause = True
+            elif event.key == pygame.K_SPACE and pause:
+                pause = False
 
     keys = pygame.key.get_pressed()
     for key in keys:
@@ -557,15 +568,12 @@ while run:
             panY = panY + speed
         if keys[pygame.K_DOWN]:
             panY = panY - speed
-        # Pause simulation
-        if keys[pygame.K_SPACE] and run:
-            pause = True
-            run = False
-            pygame.time.delay(500)
+
+
 
     # Pause loop
     # TODO: Fix pause loop
-    while pause:
+    '''while pause:
         clock.tick(userFPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -578,7 +586,7 @@ while run:
             if keys[pygame.K_SPACE] and pause:
                 run = True
                 pause = False
-                pygame.time.delay(500)
+                pygame.time.delay(500)'''
 
     redraw()
 
