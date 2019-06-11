@@ -12,20 +12,26 @@ panX = 0
 panY = 0
 zoom = 1
 
+ambientTemperature = 20
+
+pause = False
+clicked = False
+rClicked = False
+lClicked = False
+edit = False
+clickCount = 0
+
+adjPosX = 1
+adjPosY = 1
+
+tagInfo = 'blank'
+
+
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 #screen = sgc.surface.Screen((640,480))
 
 userFPS = 30
 clock = pygame.time.Clock()
-
-ambientTemperature = 20
-
-pause = False
-clicked = False
-clickCount = 0
-edit = False
-nmposX = 1
-nmposY = 1
 
 
 class Separator(object):
@@ -61,6 +67,7 @@ class Separator(object):
         self.rect = 0
 
     def draw(self, source, out_source, x=10, y=10):
+        global tagInfo
         self.width = 300
         self.height = 120
         # TODO: fix temp calc
@@ -71,6 +78,10 @@ class Separator(object):
         move(self, x, y)
 
         self.rect = pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
+
+        if self.rect.collidepoint(mPos) and rClicked and edit:
+            tagInfo = self.tag
+            pygame.draw.rect(screen, (255, 255, 255), (mPos[0], mPos[1], 100, 50))
 
         font = pygame.font.SysFont('arial', 25, True)
         tag = font.render(str(self.tag), 1, (255, 255, 255))
@@ -337,6 +348,7 @@ lic001 = Controller()
 #btn = sgc.Button(label='click', pos=(1000, 200))
 #btn.add(0)
 
+
 # Functions
 def pipe(start, end, size):
 
@@ -364,7 +376,7 @@ def pipe(start, end, size):
 
 
 def move(self, x, y):        # Function for moving assets
-    global nmposX, nmposY
+    global adjPosX, adjPosY
     if not self.clicked:
         self.x = x + panX
         self.y = y + panY
@@ -375,13 +387,13 @@ def move(self, x, y):        # Function for moving assets
         self.x = self.x
         self.y = self.y
                 
-        if not clicked:
-            nmposX = (mPos[0] - self.x) / self.width
-            nmposY = (mPos[1] - self.y) / self.height
-        elif clicked:
+        if not lClicked:
+            adjPosX = (mPos[0] - self.x) / self.width
+            adjPosY = (mPos[1] - self.y) / self.height
+        elif lClicked:
             self.clicked = True
-            self.x = mPos[0] - self.width * nmposX
-            self.y = mPos[1] - self.height * nmposY
+            self.x = mPos[0] - self.width * adjPosX
+            self.y = mPos[1] - self.height * adjPosY
             self.newX = self.x - panX
             self.newY = self.y - panY
 
@@ -407,9 +419,15 @@ def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=dummy):
 
 
 def draw_sep():
-    for keys in separatorDraw.keys():
-        separator.get(keys).draw(separatorDraw.get(keys)[0], separatorDraw.get(keys)[1], separatorDraw.get(keys)[2], separatorDraw.get(keys)[3])
+    for sep in separatorDraw:
+        separator.get(sep).draw(separatorDraw.get(sep)[0], separatorDraw.get(sep)[1],
+                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3])
     
+
+def update_sep(self):
+    tag = self.tag
+    separator.update({tag: Separator(tag, volume, volume_water)})
+
 
 def draw_transmitter():
     for i in range(len(transmitterDraw)):
@@ -437,6 +455,7 @@ def button(x, y, width, height, msg='BUTTON', func=None):
         s = separator.get(s)
         new_transmitter('111', 'level oil', 100, 100, s)
         clickCount += 1
+
 
 def is_mouse_inside(x, y, width, height):
     m_pos = pygame.mouse.get_pos()
@@ -507,6 +526,12 @@ while run:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             clicked = True
+            if event.button == 1:
+                lClicked = True
+                print('left')
+            if event.button == 3:
+                rClicked = True
+                print('right')
             if event.button == 4:
                 zoom = zoom + 1
                 print('zoom inn')
@@ -515,6 +540,8 @@ while run:
                 print('zoom out')
         elif event.type == pygame.MOUSEBUTTONUP:
             clicked = False
+            lClicked = False
+            rClicked = False
             clickCount = 0
         #if event.type == GUI:
             #print(event)
@@ -550,7 +577,7 @@ while run:
             panY = panY + speed
         if keys[pygame.K_DOWN]:
             panY = panY - speed
-
+    print(tagInfo)
     redraw()
 
 pygame.quit()
