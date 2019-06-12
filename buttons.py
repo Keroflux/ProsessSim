@@ -6,8 +6,8 @@ pygame.init()
 wScreen = 1200
 hScreen = 800
 
-screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
-#screen = sgc.surface.Screen((640,480))
+#screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
+screen = sgc.surface.Screen((640,480))
 
 userFPS = 30
 clock = pygame.time.Clock()
@@ -18,10 +18,13 @@ lClicked = False
 edit = False
 clickCount = 0
 
-#btn = sgc.Button(label='click', pos=(100, 200))
-#btn.add(0)
+btn = sgc.Button(label='click', pos=(100, 200))
+btn.add(0)
 
 
+class InBox(sgc.InputBox):
+    def on_enter(self):
+        print('no')
 
 
 
@@ -29,8 +32,8 @@ def test():
     print('test')
 
 
-tB = sgc.InputBox(pos=(100, 100), flags=1)
-tB.add(0)
+tBox = InBox()
+tBox.add(0)
 
 testt = 'test'
 fontB = pygame.font.SysFont('arial', 25, True)
@@ -43,6 +46,7 @@ def redraw():
     screen.fill((128, 128, 128))
     sgc.update(clock.tick(userFPS))
     fontB = pygame.font.SysFont('arial', 25, True)
+    testt = tBox.text
     hz = fontB.render(testt, 1, (0, 0, 0))
     screen.blit(hz, (300, 5))
     pygame.display.flip()
@@ -57,7 +61,7 @@ while run:
     for event in pygame.event.get():
         sgc.event(event)
         if event.type == GUI:
-            if event.text:
+            if event.widget_type == InBox:
                 print(event)
                 testt = event.text
         if event.type == pygame.QUIT:
