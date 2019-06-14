@@ -26,6 +26,7 @@ lClicked = False
 edit = False
 clickCount = 0
 menu = False
+menu2 = False
 inside = False
 
 adjPosX = 1
@@ -35,6 +36,7 @@ tagInfo = 'blank'
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
+pygame.display.set_caption('sim')
 
 userFPS = 30
 clock = pygame.time.Clock()
@@ -103,7 +105,7 @@ class Separator(object):
             self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
             self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
 
-            self.pressure = self.volumeGas / self.volumeLeft
+            self.pressure = self.volumeGas / self.volumeLeft + 1
 
             # TODO: separation efficiency calculation oil in water(draft), oil in gas, gas in oil(draft)
             # Oil level
@@ -164,7 +166,7 @@ class Transmitter(object):
         font = pygame.font.SysFont('arial', 25, True)
         
         if self.typ == 'pressure':
-            content = font.render(str(round(measuring_point.pressure, 2)) + 'Bar', 1, (255, 255, 255))
+            content = font.render(str(round(measuring_point.pressure - 1, 2)) + 'Bar', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
 
             self.value = measuring_point.pressure
@@ -221,6 +223,7 @@ class Valve(object):
         self.newY = 0
         self.clicked = False
         self.rect = 0
+        self.faceplate = False
 
     def draw(self, source, out_source, x, y):
         self.dP = source.pressure - out_source.pressure
@@ -231,12 +234,13 @@ class Valve(object):
         pipe(self, out_source, 4)
         self.rect = pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
 
+        font = pygame.font.SysFont('arial', 25, True)
+        opening = font.render(str(round(self.opening)) + '%', 1, (255, 255, 255))
+        screen.blit(opening, (self.x + 5, self.y + 50))
+
         info_box(self, source, out_source)
         move(self, x, y)
-
-        font = pygame.font.SysFont('arial', 25, True)
-        opening = font.render(str(round(self.opening, 2)) + '%', 1, (255, 255, 255))
-        screen.blit(opening, (self.x + 5, self.y))
+        faceplate(self)
 
         # TODO: fix calculations
         if not pause:
@@ -379,114 +383,23 @@ class Button(object):
             self.click = False
     
 
-# Drawing from dictionaris
+'''Drawing from dictionaries, default content'''
 dummyD = {'dummy0': Dummy('dummy0'), 'dummy50': Dummy('dummy50'), 'dummy500': Dummy('dummy500')}
-dummyDraw = {'dummy0': [0, 0, 0], 'dummy50': [50, 5000, 30], 'dummy500': [500, 500, 500]}
+separator = {'d001': Separator('d001', 8, 4), 'd002': Separator('d002', 80, 4)}
+transmitter = {'pi001': Transmitter('pressure', 'pi001'), 'li001': Transmitter('level oil', 'li001'),
+               'li003': Transmitter('level water', 'li003'), 'fi001': Transmitter('flow', 'fi001'), 'li002': Transmitter('level oil', 'li002')}
+valve = {'fv001': Valve('fv001', 'oil', 1)}
+controller = {'lic001': Controller('lic001')}
 
-separator = {}
-separatorDraw = {}
-
-transmitter = {}
-transmitterDraw = {}
-
-valve = {}
-valveDraw = {}
-
-# Draw default stuff
-dummy = Dummy('d1')
-dummy2 = Dummy('d2')
-dummy3 = Dummy('d3')
-
-d001 = Separator('d001')
-pi001 = Transmitter('pressure', 'pi001')
-li001 = Transmitter('level oil', 'li001')
-li003 = Transmitter('level water', 'li003')
-fv001 = Valve('fv001', 'oil', 1)
-fi001 = Transmitter('flow', 'fi001')
-d002 = Separator('d002', 80)
-li002 = Transmitter('level oil', 'li002')
-fi002 = Transmitter('flow', 'fi002')
-lic001 = Controller('lic001')
+dummyDraw = {'dummy0': [0, 0, 0], 'dummy50': [50, 500, 30], 'dummy500': [500, 500, 500]}
+separatorDraw = {'d001': [dummyD.get('dummy50'), valve.get('fv001'), 50, 100], 'd002': [valve.get('fv001'), dummyD.get('dummy0'), 750, 300]}
+transmitterDraw = {'pi001': [separator.get('d001'), 10, 10], 'li001': [separator.get('d001'), 200, 300],
+                   'li003': [separator.get('d001'), 150, 10], 'fi001': [valve.get('fv001'), 400, 100], 'li002': [separator.get('d002'), 800, 200]}
+valveDraw = {'fv001': [separator.get('d001'), separator.get('d002'), 450, 300]}
+controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 100, 100, 5, 10, 5]}
 
 # btn = sgc.Button(label='click', pos=(1000, 200))
 # btn.add(0)
-
-
-def draw_dummy():
-    for dum in dummyDraw:
-        dummyD.get(dum).draw(dummyDraw.get(dum)[0], dummyDraw.get(dum)[0], dummyDraw.get(dum)[0])
-        
-
-def new_sep(tag='ddd', volume=8, volume_water=4, source=dummyD.get('dummy0'), out_source=fv001, x=1000, y=100):
-    tag = input('Tag: ')
-    x = mPos[0]
-    y = mPos[1]
-    out = input('Out: ')
-    out_source = dummyD.get(out)
-    separator.setdefault(tag, Separator(tag, volume, volume_water))
-    separatorDraw.setdefault(tag, [source, out_source, x, y])
-
-
-def draw_sep():
-    for sep in separatorDraw:
-        separator.get(sep).draw(separatorDraw.get(sep)[0], separatorDraw.get(sep)[1],
-                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3])
-
-
-def update_sep(self, source, out_source, x, y): # TODO: Fix this
-    if self.rect.collidepoint(mPos) and rClicked and edit:
-        tag = self.tag
-        source = source
-        out_source = out_source
-        x = self.x
-        y = self.y
-        
-        new_source = input('Old: ' + source.tag + ' New: ')
-        if new_source == '':
-            source = source
-        elif new_source in dummyD:
-            source = dummyD.get(new_source)
-        elif new_source in separator:
-            source = separator.get(new_source)
-            x = input('Old: ' + str(x) + ' New: ')
-            x = int(x)
-        elif new_source in transmitter:
-            source = transmitter.get(new_source)
-        elif new_source in valve:
-            source = valve.get(new_source)
-        else:
-            print('Tag does not exist')
-        
-        #separator.update({tag: Separator(tag, volume, volume_water)})
-        separatorDraw.update({tag: [source, out_source, x, y]})
-
-
-def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=dummy):
-    tag = input('Tag: ')
-    x = mPos[0]
-    y = mPos[1]
-    transmitter.setdefault(tag, Transmitter(typ, tag))
-    transmitterDraw.setdefault(tag, [source, x, y])
-
-
-def draw_transmitter():
-    for trans in transmitterDraw:
-        transmitter.get(trans).draw(transmitterDraw.get(trans)[0], transmitterDraw.get(trans)[1],
-                                    transmitterDraw.get(trans)[2])
-
-
-def new_valve(tag='v001', typ='oil', size=1, source=dummy, out_source=dummy, x=1000, y=100):
-    tag = input('Tag: ')
-    x = mPos[0]
-    y = mPos[1]
-    valve.setdefault(tag, Valve(tag, typ, size))
-    valveDraw.setdefault(tag, [source, out_source, x, y])
-
-
-def draw_valve():
-    for tag in valveDraw:
-        valve.get(tag).draw(valveDraw.get(tag)[0], valveDraw.get(tag)[1],
-                            valveDraw.get(tag)[2], valveDraw.get(tag)[3])
 
 
 def pipe(start, end, size):
@@ -511,6 +424,106 @@ def pipe(start, end, size):
         pygame.draw.line(screen, (255, 255, 255), (start.x + start.width - 2, start.y + y1), (x1, start.y + y1), size)
         pygame.draw.line(screen, (255, 255, 255), (x1, start.y + y1), (x1, end.y + y2), size)
         pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
+        
+
+def draw_dummy():
+    for dum in dummyDraw:
+        dummyD.get(dum).draw(dummyDraw.get(dum)[0], dummyDraw.get(dum)[1], dummyDraw.get(dum)[2])
+        
+
+def new_sep(tag='ddd', volume=8, volume_water=4, source=dummyD.get('dummy0'), out_source=dummyD.get('dummy0'), x=1000, y=100):
+    tag = input('Tag: ')
+    x = mPos[0]
+    y = mPos[1]
+    out = input('Out: ')
+    if out in valve:
+        out_source = valve.get(out)
+    else:
+        out_source = dummyD.get('dummy0')
+        print(out + 'does not exist')
+    separator.setdefault(tag, Separator(tag, volume, volume_water))
+    separatorDraw.setdefault(tag, [source, out_source, x, y])
+
+
+def draw_sep():
+    for sep in separatorDraw:
+        separator.get(sep).draw(separatorDraw.get(sep)[0], separatorDraw.get(sep)[1],
+                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3])
+
+
+def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update
+    if self.rect.collidepoint(mPos) and rClicked and edit:
+        tag = self.tag
+        source = source
+        out_source = out_source
+        x = self.x
+        y = self.y
+        
+        new_source = input('Old: ' + source.tag + ' New: ')
+        if new_source == '':
+            source = source
+        elif new_source in dummyD:
+            source = dummyD.get(new_source)
+        elif new_source in separator:
+            source = separator.get(new_source)
+        elif new_source in valve:
+            source = valve.get(new_source)
+        else:
+            print('Tag does not exist')
+
+        nOut = input()
+        out_source = valve.get(nOut)
+        
+        #separator.update({tag: Separator(tag, volume, volume_water)})
+        separatorDraw.update({tag: [source, out_source, x, y]})
+
+
+def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=dummyD.get('dummy0')):
+    tag = input('Tag: ')
+    nSource = input('Source: ')
+    source = separator.get(nSource)
+    x = mPos[0]
+    y = mPos[1]
+    transmitter.setdefault(tag, Transmitter(typ, tag))
+    transmitterDraw.setdefault(tag, [source, x, y])
+
+
+def draw_transmitter():
+    for trans in transmitterDraw:
+        transmitter.get(trans).draw(transmitterDraw.get(trans)[0], transmitterDraw.get(trans)[1],
+                                    transmitterDraw.get(trans)[2])
+
+
+def new_valve(tag='v001', typ='oil', size=1, source=dummyD.get('dummy0'), out_source=dummyD.get('dummy0'), x=1000, y=100):
+    tag = input('Tag: ')
+    nSource = input('source: ')
+    source = separator.get(nSource)
+    x = mPos[0]
+    y = mPos[1]
+    valve.setdefault(tag, Valve(tag, typ, size))
+    valveDraw.setdefault(tag, [source, out_source, x, y])
+
+
+def draw_valve():
+    for tag in valveDraw:
+        valve.get(tag).draw(valveDraw.get(tag)[0], valveDraw.get(tag)[1],
+                            valveDraw.get(tag)[2], valveDraw.get(tag)[3])
+
+def new_controller(tag='c001', source='dummy0', target='dummy0', x=100, y=100, p=5, i=10, d=5):
+    tag = input('Tag: ')
+    nSource = input('Source: ')
+    source = transmitter.get(nSource)
+    x = mPos[0]
+    y = mPos[1]
+    controller.setdefault(tag, Controller(tag))
+    controllerDraw.setdefault(tag, [source, target, x, y, p, i, d])
+    
+
+def draw_controller():
+    for tag in controllerDraw:
+        controller.get(tag).draw(controllerDraw.get(tag)[0], controllerDraw.get(tag)[1],
+                                 controllerDraw.get(tag)[2], controllerDraw.get(tag)[3],
+                                 controllerDraw.get(tag)[4], controllerDraw.get(tag)[5])
 
 
 def move(self, x, y):  # Function for moving assets
@@ -536,7 +549,7 @@ def move(self, x, y):  # Function for moving assets
             self.newY = self.y - panY
 
 
-def info_box(self, source, out_source=dummy):
+def info_box(self, source, out_source=dummyD.get('dummy0')):
     global tagInfo
     if self.rect.collidepoint(mPos) and edit and not clicked:
             font = pygame.font.SysFont('arial', 15, False)
@@ -568,6 +581,29 @@ def edit_menu():
         nTransmitterBtn.draw(x, y + 50, 100, 25, 15, False)
     if lClicked:
         menu = False
+
+
+def faceplate(self):
+    faceplate = pygame.draw.rect(screen, (255, 205, 186), (0, 0, 0, 0))
+    font = pygame.font.SysFont('comicsans', 20, False)
+    fontB = pygame.font.SysFont('arial', 20, True)
+    
+    if not edit and self.rect.collidepoint(mPos) and rClicked:
+        self.faceplate = True
+        x = mPos[0]
+        y = mPos[1]
+        
+    if self.faceplate:
+        faceplate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
+        tag = fontB.render(str(self.tag), 1, (0, 0, 0))
+        opening = font.render('Output: ' + str(round(self.opening, 2)) + ' %', 1, (0, 0, 0))
+        screen.blit(tag, (faceplate.x - tag.get_rect().width / 2 + faceplate.width / 2, faceplate.y))
+        screen.blit(opening, (faceplate.x, faceplate.y + 50))
+        
+        bar = pygame.draw.rect(screen, (28, 173, 0), (faceplate.x + 10, faceplate.y + faceplate.height - 10 - 1 * self.opening , 10, 1 * self.opening))
+        
+    if lClicked and not faceplate.collidepoint(mPos):
+        self.faceplate = False
                
 
 def pause_sim():
@@ -592,11 +628,6 @@ def edit_mode():
         return True'''
 
 
-'''Putting new stuff in dictionaries'''
-#new_sep('dpp1', 8, 4, dummyD.get('dummy0'), fv001, 500, 500)
-#new_sep('dpp2', 8, 4, dummyD.get('dummy0'), fv001, 10, 500)
-#new_valve()
-
 '''Setting up UI'''
 pauseBtn = Button('Pause', pause_sim)
 testBtn = Button('Test', new_sep)
@@ -608,28 +639,14 @@ nTransmitterBtn = Button('New Transmitter', new_transmitter)
 
 def redraw():
     screen.fill((128, 128, 128))
-
-    '''Draw default stuff''' # TODO: Remove this and draw from dict
-    dummy.draw(0, 0)
-    dummy2.draw(50, 5000, 30)
-    dummy3.draw(5000, 0)
-
-    pi001.draw(d001, 10, 10)
-    li001.draw(d001, 200, 300)
-    fv001.draw(d001, d002, 450, 300)
-    fi001.draw(fv001, 400, 100)
-    d001.draw(dummy2, fv001, 50, 100)
-    d002.draw(fv001, dummy, 700, 300)
-    li002.draw(d002, 600, 200)
-    lic001.draw(li001, fv001)
-    li003.draw(d001, 150, 10)
     
     '''Drawing stuff in the dictionaries'''
     draw_transmitter()
     draw_sep()
     draw_dummy()
     draw_valve()
-
+    draw_controller()
+    
     '''Draw UI'''
     pauseBtn.draw(100, rH - 35)
     testBtn.draw(pauseBtn.x + 110, rH - 35)
@@ -639,23 +656,20 @@ def redraw():
 
     #pygame.draw.rect(screen, (255, 205, 186), (0, 0, rW, 30))
 
-    '''Simulation info'''
-    font = pygame.font.SysFont('arial', 15, False)
-    fontB = pygame.font.SysFont('arial', 25, True)
-    hz = font.render(str(round(trueFPS, 2)) + 'Hz', 1, (0, 0, 0))
-    screen.blit(hz, (300, 5))
-    pros = font.render(str(round(simSpeed, 2)) + '%', 1, (0, 0, 0))
-    screen.blit(pros, (360, 5))
     '''Debug text'''
+    '''font = pygame.font.SysFont('arial', 15, False)
     debug = font.render(str(fv001.flowOil * m3h), 1, (0, 0, 0))
     screen.blit(debug, (460, 5))
     debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
-    screen.blit(debug2, (460, 25))
-    print(tagInfo)
+    screen.blit(debug2, (460, 25))'''
+
     if edit:
+        fontB = pygame.font.SysFont('arial', 25, True)
         mode = fontB.render('EDIT', 1, (0, 0, 0))
         screen.blit(mode, (600, 5))
         editBtn.color = (30, 191, 86)
+        
+    pygame.display.set_caption('Pyton Control System --- FPS: ' + str(round(trueFPS, 1))+ ' --- ' + str(round(simSpeed, 1)) + '%' )
     
     # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
@@ -663,7 +677,7 @@ def redraw():
 
 run = True
 while run:
-
+    
     rW = screen.get_width()  # Gets current width of the screen
     rH = screen.get_height()  # Gets current height of the screen
     clock.tick(userFPS)
@@ -696,20 +710,22 @@ while run:
             lClicked = False
             rClicked = False
             clickCount = 0
+        if event.type == pygame.MOUSEMOTION:
+            tagInfo = ''
+                
         # if event.type == GUI:
         # print(event)
 
-        # Makes the window resizable
-        if event.type == pygame.VIDEORESIZE:
+        if event.type == pygame.VIDEORESIZE: # Makes the window resizable
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 
         if event.type == pygame.KEYUP:
-            # Edit mode
+            '''Edit mode'''
             if event.key == pygame.K_e and not edit:
                 edit = True
             elif event.key == pygame.K_e and edit:
                 edit = False
-            # Pause sim
+            '''Pause'''
             if event.key == pygame.K_SPACE and not pause:
                 pause = True
             elif event.key == pygame.K_SPACE and pause:
@@ -717,7 +733,7 @@ while run:
 
     keys = pygame.key.get_pressed()
     for key in keys:
-        # Panning keys
+        '''Panning'''
         if keys[pygame.K_LCTRL]:
             speed = 3 / (trueFPS + 0.01)
         else:
@@ -730,7 +746,7 @@ while run:
             panY = panY + speed
         if keys[pygame.K_DOWN]:
             panY = panY - speed
-    tagInfo = ''
+
     redraw()
 
 pygame.quit()
