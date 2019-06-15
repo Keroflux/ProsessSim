@@ -26,13 +26,12 @@ lClicked = False
 edit = False
 clickCount = 0
 menu = False
-menu2 = False
-inside = False
 
 adjPosX = 1
 adjPosY = 1
 
 tagInfo = ''
+tagId = ''
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
@@ -40,6 +39,8 @@ pygame.display.set_caption('sim')
 
 userFPS = 30
 clock = pygame.time.Clock()
+
+defaultRect = pygame.draw.rect(screen, (0, 0, 0), (0, 0, 0, 0))
 
 
 class Separator(object):
@@ -75,7 +76,7 @@ class Separator(object):
         self.rect = 0
 
     def draw(self, source, out_source, x=10, y=10):
-        global tagInfo, inside
+        global tagInfo, tagId
  
         # TODO: fix temp calc
         td = source.temperature / ambientTemperature
@@ -93,7 +94,8 @@ class Separator(object):
         screen.blit(tag, (self.x + 5, self.y))
     
         if self.rect.collidepoint(mPos):
-            tagInfo = self.id
+            tagInfo = self.tag
+            tagId = self.id
             
         if not pause:
             if self.levelWater >= 1:
@@ -153,15 +155,17 @@ class Transmitter(object):
         self.rect = 0
 
     def draw(self, measuring_point, x=10, y=10):
-        global tagInfo
+        global tagInfo, tagId
         self.rect = pygame.draw.rect(screen, (75, 75, 75), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width / 2, self.y + self.height),
                          (self.x + self.width / 2, measuring_point.y))
 
         info_box(self, measuring_point)
         move(self, x, y)
+        
         if self.rect.collidepoint(mPos):
             tagInfo = self.tag
+            tagId = self.id
 
         font = pygame.font.SysFont('arial', 25, True)
         
@@ -225,10 +229,10 @@ class Valve(object):
         self.clicked = False
         self.rect = 0
         self.faceplate = False
-        self.mode = 'auto'
+        self.auto = False
 
     def draw(self, source, out_source, x, y):
-        global tagInfo
+        global tagInfo, tagId
         self.dP = source.pressure - out_source.pressure
 
         if self.opening < 0:
@@ -238,7 +242,8 @@ class Valve(object):
         self.rect = pygame.draw.rect(screen, (5, 5, 5), (self.x, self.y, self.width, self.height))
 
         if self.rect.collidepoint(mPos):
-            tagInfo = self.id
+            tagInfo = self.tag
+            tagId = self.id
 
         font = pygame.font.SysFont('arial', 25, True)
         opening = font.render(str(round(self.opening)) + '%', 1, (255, 255, 255))
@@ -246,7 +251,7 @@ class Valve(object):
 
         info_box(self, source, out_source)
         move(self, x, y)
-        faceplate(self)
+        faceplateValve(self)
 
         # TODO: fix calculations
         if not pause:
@@ -289,19 +294,35 @@ class Controller(object):
         self.offsetTime = 0
         self.offset = 0
         self.output = 0
-        self.setPoint = 0
+        self.setPoint = 3
         self.x = 0
         self.y = 0
         self.dProcessValue = [0, 0]  # List that stores the two last values
         self.dOffset = [0, 0]  # List that stores the two last offset values
 
         self.mode = 'auto'
+        self.rect = 0
+        self.faceplate = False
+        self.height = 0
+        self.width = 0
+        self.target = 0
+        self.source = 0
 
     def draw(self, source, target, p_value=5, i_value=10, d_value=5):
+        global tagIfo, tagId
         self.x = source.x
         self.y = source.y
+        self.height = source.height
+        self.width = source.width
+        self.rect = source.rect
+        self.target = target
+        self.source = source
 
-        self.setPoint = 3
+        faceplateController(self)
+
+        if self.rect.collidepoint(mPos):
+            tagInfo = self.tag
+            tagId = self.id
 
         if not pause:
             self.offset = self.setPoint - source.value
@@ -321,8 +342,8 @@ class Controller(object):
             self.pid = self.p + self.i + self.d
 
             self.output = self.pid * timeStep
-
-            target.opening = target.opening - self.output
+            if target.auto:
+                target.opening = target.opening - self.output
             if target.opening < 0:
                 target.opening = 0
             elif target.opening > 100:
@@ -356,7 +377,7 @@ class Dummy(object):
 
 
 class Button(object):
-    def __init__(self, msg, func):
+    def __init__(self, msg, func=None):
         self.msg = msg
         self.x = 0
         self.y = 0
@@ -385,7 +406,8 @@ class Button(object):
             self.color = (30, 191, 86)
         if rect.collidepoint(mPos) and lClicked and clickCount == 0:
             self.click = True
-            self.func()
+            if self.func != None:
+                self.func()
             clickCount += 1
         else:
             self.click = False
@@ -578,9 +600,48 @@ def info_box(self, source, out_source=dummy.get('dummy0')):
         #screen.blit(info3, (mPos[0] + 25, mPos[1] + 45))
 
 
-def faceplate(self):
-    plate = pygame.draw.rect(screen, (0, 0, 0), (0, 0, 0, 0))
-    ex = pygame.draw.rect(screen, (0, 0, 0), (0, 0, 0, 0))
+def faceplateValve(self):
+    global defaultRect
+    plate = defaultRect
+    font = pygame.font.SysFont('consolas', 15, False)
+    font_b = pygame.font.SysFont('arial', 20, True)
+    ex_btn = Button('X')
+    man_btn = Button('manuel')
+    aut_btn = Button('auto')
+
+    if not edit and self.rect.collidepoint(mPos) and lClicked:
+        self.faceplate = True
+    if self.faceplate:
+        plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
+        pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
+        tag = font_b.render(str(self.tag), 1, (0, 0, 0))
+        opening = font.render('Output: ' + str(round(self.opening, 2)) + ' %', 1, (0, 0, 0))
+        screen.blit(tag, (plate.x - tag.get_rect().width / 2 + plate.width / 2, plate.y))
+        screen.blit(opening, (plate.x + 5, plate.y + 50))
+
+        ex_btn.draw(plate.x + 130, plate.y + 10, 15, 15, 12)
+        man_btn.draw(plate.x + 50, plate.y + 140, 80, 25, 20)
+        aut_btn.draw(plate.x + 50, plate.y + 170, 80, 25, 20)
+
+        pygame.draw.rect(screen, (28, 173, 0),
+                         (plate.x + 10, plate.y + plate.height - 10 - 1 * self.opening, 10, 1 * self.opening))
+        pygame.draw.rect(screen, (255, 255, 255),
+                         (plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
+
+        if ex_btn.click:
+            self.faceplate = False
+        if man_btn.click:
+            self.auto = False
+        if aut_btn.click:
+            self.auto = True
+        
+
+def faceplateController(self):
+    global defaultRect
+    plate = defaultRect
+    ex_btn = Button('X')
+    setp_btn = Button('+')
+    setm_btn = Button('-')
     font = pygame.font.SysFont('consolas', 15, False)
     font_b = pygame.font.SysFont('arial', 20, True)
 
@@ -588,19 +649,34 @@ def faceplate(self):
         self.faceplate = True
     if self.faceplate:
         plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
+        pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
         tag = font_b.render(str(self.tag), 1, (0, 0, 0))
-        opening = font.render('Output: ' + str(round(self.opening, 2)) + ' %', 1, (0, 0, 0))
+        opening = font.render('Setpoint: ' + str(round(self.setPoint, 2)) + ' %', 1, (0, 0, 0))
         screen.blit(tag, (plate.x - tag.get_rect().width / 2 + plate.width / 2, plate.y))
         screen.blit(opening, (plate.x + 5, plate.y + 50))
 
-        ex = pygame.draw.rect(screen, (255, 100, 100), (plate.x + 130, plate.y + 5, 15, 15))
+        ex_btn.draw(plate.x + 130, plate.y + 10, 15, 15, 12)
+        setp_btn.draw(plate.x + 70, plate.y + 100, 20, 20, 20)
+        setm_btn.draw(plate.x + 40, plate.y + 100, 20, 20, 20)
 
         pygame.draw.rect(screen, (28, 173, 0),
-                         (plate.x + 10, plate.y + plate.height - 10 - 1 * self.opening, 10, 1 * self.opening))
-
-    if lClicked and ex.collidepoint(mPos):
-        self.faceplate = False
-
+                         (plate.x + 10, plate.y + plate.height - 10 - 1 * self.source.value, 10, 1 * self.source.value))
+        pygame.draw.rect(screen, (255, 255, 255),
+                         (plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
+        pygame.draw.line(screen, (0, 106, 255), (plate.x + 6, plate.y + plate.height - 10 - self.setPoint), (plate.x + 23, plate.y + plate.height - 10 - self.setPoint), 2)
+        
+        pygame.draw.rect(screen, (28, 173, 0),
+                         (plate.x + 30, plate.y + plate.height - 20, 1 * self.target.opening, 10))
+        pygame.draw.rect(screen, (255, 255, 255),
+                         (plate.x + 30, plate.y + plate.height - 20, 100, 10), 1)
+        
+        if setp_btn.click:
+            self.setPoint += 1
+        if setm_btn.click:
+            self.setPoint -= 1
+        if ex_btn.click:
+            self.faceplate = False
+        
 
 def edit_menu():
     global menu, menuX, menuY
@@ -641,7 +717,7 @@ def clear():
     valveDraw.clear()
     controller.clear()
     controllerDraw.clear()
-
+    
 
 '''def is_mouse_inside(x, y, width, height):
     m_pos = pygame.mouse.get_pos()
@@ -700,7 +776,6 @@ def redraw():
     
     # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
-
 
 run = True
 while run:
