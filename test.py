@@ -36,7 +36,7 @@ tagId = ''
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
 
-userFPS = 30
+userFPS = 300
 clock = pygame.time.Clock()
 
 
@@ -621,6 +621,7 @@ def info_box(self, source):
 def faceplate_valve(self):
     font = pygame.font.SysFont('consolas', 15, False)
     font_b = pygame.font.SysFont('arial', 20, True)
+    facep = pygame.image.load('fp.png')
     ex_btn = Button('X')
     man_btn = Button('manuel')
     aut_btn = Button('auto')
@@ -628,8 +629,10 @@ def faceplate_valve(self):
     if not edit and self.rect.collidepoint(mPos) and lClicked:
         self.faceplate = True
     if self.faceplate:
-        plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
-        pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
+        screen.blit(facep, [self.x, self.y + self.height + 8])
+        plate = facep.get_rect()
+        #plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
+        #pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
         tag = font_b.render(str(self.tag), 1, (0, 0, 0))
         opening = font.render('Output: ' + str(round(self.opening, 2)) + ' %', 1, (0, 0, 0))
         screen.blit(tag, (plate.x - tag.get_rect().width / 2 + plate.width / 2, plate.y))
@@ -641,8 +644,8 @@ def faceplate_valve(self):
 
         pygame.draw.rect(screen, (28, 173, 0),
                          (plate.x + 10, plate.y + plate.height - 10 - 1 * self.opening, 10, 1 * self.opening))
-        pygame.draw.rect(screen, (255, 255, 255),
-                         (plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
+        #pygame.draw.rect(screen, (255, 255, 255),
+                         #(plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
 
         if ex_btn.click:
             self.faceplate = False
