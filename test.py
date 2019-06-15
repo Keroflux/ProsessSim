@@ -35,12 +35,9 @@ tagId = ''
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
-pygame.display.set_caption('sim')
 
 userFPS = 30
 clock = pygame.time.Clock()
-
-defaultRect = pygame.draw.rect(screen, (0, 0, 0), (0, 0, 0, 0))
 
 
 class Separator(object):
@@ -74,20 +71,25 @@ class Separator(object):
         self.newY = 0
         self.clicked = False
         self.rect = 0
+        self.oilOut = 0
 
-    def draw(self, source, out_source, x=10, y=10):
+    def draw(self, source, out_oil, out_gas, out_water, x=10, y=10):
         global tagInfo, tagId
- 
+
+        self.oilOut = out_oil
         # TODO: fix temp calc
         td = source.temperature / ambientTemperature
         self.temperature = source.temperature - td
         
-        pipe(self, out_source, 4)
+        pipe(self, out_oil, 4)
         self.rect = pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
 
-        update_sep(self, source, out_source, x, y)
-        info_box(self, source, out_source)
+        update_sep(self, source, out_oil, x, y)
         move(self, x, y)
+        try:
+            info_box(self, source)
+        except AttributeError:
+            pass
 
         font = pygame.font.SysFont('arial', 25, True)
         tag = font.render(str(self.tag), 1, (255, 255, 255))
@@ -99,13 +101,13 @@ class Separator(object):
             
         if not pause:
             if self.levelWater >= 1:
-                self.cubesOil = self.cubesOil + source.flowOil + source.flowWater - out_source.flowOil
+                self.cubesOil = self.cubesOil + source.flowOil + source.flowWater - out_oil.flowOil
             else:
-                self.cubesOil = self.cubesOil - out_source.flowOil + source.flowOil
+                self.cubesOil = self.cubesOil - out_oil.flowOil + source.flowOil
 
-            self.cubesWater = self.cubesWater - out_source.flowWater + source.flowWater
+            self.cubesWater = self.cubesWater - out_oil.flowWater + source.flowWater
             self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
-            self.volumeGas = self.volumeGas + source.flowGas - out_source.flowGas
+            self.volumeGas = self.volumeGas + source.flowGas - out_oil.flowGas
 
             self.pressure = self.volumeGas / self.volumeLeft + 1
 
@@ -160,7 +162,11 @@ class Transmitter(object):
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width / 2, self.y + self.height),
                          (self.x + self.width / 2, measuring_point.y))
 
-        info_box(self, measuring_point)
+        try:
+            info_box(self, measuring_point)
+        except AttributeError:
+            pass
+
         move(self, x, y)
         
         if self.rect.collidepoint(mPos):
@@ -249,9 +255,13 @@ class Valve(object):
         opening = font.render(str(round(self.opening)) + '%', 1, (255, 255, 255))
         screen.blit(opening, (self.x + 5, self.y + 50))
 
-        info_box(self, source, out_source)
+        try:
+            info_box(self, source)
+        except AttributeError:
+            pass
+
         move(self, x, y)
-        faceplateValve(self)
+        faceplate_valve(self)
 
         # TODO: fix calculations
         if not pause:
@@ -309,7 +319,7 @@ class Controller(object):
         self.source = 0
 
     def draw(self, source, target, p_value=5, i_value=10, d_value=5):
-        global tagIfo, tagId
+        global tagInfo, tagId
         self.x = source.x
         self.y = source.y
         self.height = source.height
@@ -318,7 +328,12 @@ class Controller(object):
         self.target = target
         self.source = source
 
-        faceplateController(self)
+        faceplate_controller(self)
+
+        try:
+            info_box(self, source)
+        except AttributeError:
+            pass
 
         if self.rect.collidepoint(mPos):
             tagInfo = self.tag
@@ -406,7 +421,7 @@ class Button(object):
             self.color = (30, 191, 86)
         if rect.collidepoint(mPos) and lClicked and clickCount == 0:
             self.click = True
-            if self.func != None:
+            if self.func is not None:
                 self.func()
             clickCount += 1
         else:
@@ -423,8 +438,8 @@ valve = {'fv001': Valve('fv001', 'oil', 1)}
 controller = {'lic001': Controller('lic001')}
 
 dummyDraw = {'dummy0': [0, 0, 0], 'dummy50': [50, 500, 30], 'dummy500': [500, 500, 500]}
-separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), 50, 100],
-                 'd002': [valve.get('fv001'), dummy.get('dummy0'), 750, 300]}
+separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), 50, 100],
+                 'd002': [valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), dummy.get('dummy0'), 750, 300]}
 transmitterDraw = {'pi001': [separator.get('d001'), 10, 10], 'li001': [separator.get('d001'), 200, 300],
                    'li003': [separator.get('d001'), 150, 10], 'fi001': [valve.get('fv001'), 400, 100],
                    'li002': [separator.get('d002'), 800, 200]}
@@ -460,8 +475,8 @@ def pipe(start, end, size):
         
 
 def draw_dummy():
-    for dum in dummyDraw:
-        dummy.get(dum).draw(dummyDraw.get(dum)[0], dummyDraw.get(dum)[1], dummyDraw.get(dum)[2])
+    for tag in dummyDraw:
+        dummy.get(tag).draw(dummyDraw.get(tag)[0], dummyDraw.get(tag)[1], dummyDraw.get(tag)[2])
         
 
 def new_sep(volume=8, volume_water=4, source=dummy.get('dummy0')):
@@ -469,19 +484,22 @@ def new_sep(volume=8, volume_water=4, source=dummy.get('dummy0')):
     x = mPos[0]
     y = mPos[1]
     out = input('Out: ')
+    out_gas = dummy.get('dummy0')
+    out_water = dummy.get('dummy0')
     if out in valve:
-        out_source = valve.get(out)
+        out_oil = valve.get(out)
     else:
-        out_source = dummy.get('dummy0')
+        out_oil = dummy.get('dummy0')
         print(out + 'does not exist')
     separator.setdefault(tag, Separator(tag, volume, volume_water))
-    separatorDraw.setdefault(tag, [source, out_source, x, y])
+    separatorDraw.setdefault(tag, [source, out_oil, out_gas, out_water, x, y])
 
 
 def draw_sep():
     for sep in separatorDraw:
         separator.get(sep).draw(separatorDraw.get(sep)[0], separatorDraw.get(sep)[1],
-                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3])
+                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3],
+                                separatorDraw.get(sep)[4], separatorDraw.get(sep)[5])
 
 
 def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update
@@ -580,29 +598,27 @@ def move(self, x, y):  # Function for moving assets
             self.newY = self.y - panY
 
 
-def info_box(self, source, out_source=dummy.get('dummy0')):
+def info_box(self, source):
     global tagInfo
     if self.rect.collidepoint(mPos) and edit and not clicked:
         font = pygame.font.SysFont('arial', 15, False)
         font_b = pygame.font.SysFont('arial', 15, True)
-            
-        info0 = font_b.render(str(self.tag), 1, (0, 0, 0))
-        info1 = font.render('source: ' + str(source.tag), 1, (0, 0, 0))
-        info2 = font.render('target: ' + str(out_source.tag), 1, (0, 0, 0))
-        #info3 = font.render('size: ' + str(self.size), 1, (0, 0, 0))
-        width = info1.get_rect().width + 10
-        height = info0.get_rect().height + info1.get_rect().height + info2.get_rect().height - 5
-        pygame.draw.rect(screen, (255, 205, 186), (mPos[0] + 20, mPos[1], width, height))  # TODO: Make width dependent in longest string
+        if tagId == 'separator':  # TODO: Fix crash when changing asset
+            info0 = font_b.render(str(self.tag), 1, (0, 0, 0))
+            info1 = font.render('source: ' + str(source.tag), 1, (0, 0, 0))
+            info2 = font.render('oil out: ' + str(self.oilOut.tag), 1, (0, 0, 0))
+            info3 = font.render('size: ' + str(self.volume), 1, (0, 0, 0))
+            width = info1.get_rect().width + 10
+            height = info0.get_rect().height + info1.get_rect().height + info2.get_rect().height - 5
+            pygame.draw.rect(screen, (255, 205, 186), (mPos[0] + 20, mPos[1], width, height))  # TODO: Make width dependent in longest string
 
-        screen.blit(info0, (mPos[0] + 25, mPos[1]))
-        screen.blit(info1, (mPos[0] + 25, mPos[1] + 15))
-        screen.blit(info2, (mPos[0] + 25, mPos[1] + 30))
-        #screen.blit(info3, (mPos[0] + 25, mPos[1] + 45))
+            screen.blit(info0, (mPos[0] + 25, mPos[1]))
+            screen.blit(info1, (mPos[0] + 25, mPos[1] + 15))
+            screen.blit(info2, (mPos[0] + 25, mPos[1] + 30))
+            screen.blit(info3, (mPos[0] + 25, mPos[1] + 45))
 
 
-def faceplateValve(self):
-    global defaultRect
-    plate = defaultRect
+def faceplate_valve(self):
     font = pygame.font.SysFont('consolas', 15, False)
     font_b = pygame.font.SysFont('arial', 20, True)
     ex_btn = Button('X')
@@ -636,9 +652,7 @@ def faceplateValve(self):
             self.auto = True
         
 
-def faceplateController(self):
-    global defaultRect
-    plate = defaultRect
+def faceplate_controller(self):
     ex_btn = Button('X')
     setp_btn = Button('+')
     setm_btn = Button('-')
@@ -776,6 +790,7 @@ def redraw():
     
     # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
+
 
 run = True
 while run:
