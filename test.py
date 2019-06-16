@@ -2,6 +2,7 @@
 # 0 = oil, 1 = gas, 2 = water, 3 = pressure, 4 = temperature
 
 import pygame
+import pickle
 
 # import sgc
 
@@ -11,8 +12,8 @@ wScreen = 1200
 hScreen = 800
 rW = wScreen
 rH = hScreen
-panX = 0
-panY = 0
+panX = 50
+panY = 100
 zoom = 1
 menuX = 0
 menuY = 0
@@ -33,11 +34,15 @@ adjPosY = 1
 tagInfo = ''
 tagId = ''
 
+
+
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
 
-userFPS = 300
+userFPS = 30
 clock = pygame.time.Clock()
+
+#facep = pygame.image.load('fp.png')
 
 
 class Separator(object):
@@ -82,6 +87,8 @@ class Separator(object):
         self.temperature = source.temperature - td
         
         pipe(self, out_oil, 4)
+        pipe(self, out_gas, 4)
+        pipe(self, out_water, 4)
         self.rect = pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
 
         update_sep(self, source, out_oil, x, y)
@@ -105,9 +112,9 @@ class Separator(object):
             else:
                 self.cubesOil = self.cubesOil - out_oil.flowOil + source.flowOil
 
-            self.cubesWater = self.cubesWater - out_oil.flowWater + source.flowWater
+            self.cubesWater = self.cubesWater - out_oil.flowWater - out_water.flowWater + source.flowWater
             self.volumeLeft = self.volume - self.cubesOil + self.cubesWater
-            self.volumeGas = self.volumeGas + source.flowGas - out_oil.flowGas
+            self.volumeGas = self.volumeGas - out_oil.flowGas - out_gas.flowGas + source.flowGas
 
             self.pressure = self.volumeGas / self.volumeLeft + 1
 
@@ -235,7 +242,7 @@ class Valve(object):
         self.clicked = False
         self.rect = 0
         self.faceplate = False
-        self.auto = False
+        self.auto = True
 
     def draw(self, source, out_source, x, y):
         global tagInfo, tagId
@@ -429,22 +436,48 @@ class Button(object):
     
 
 '''Drawing from dictionaries, default content'''
-dummy = {'dummy0': Dummy('dummy0'), 'dummy50': Dummy('dummy50'), 'dummy500': Dummy('dummy500')}
-separator = {'d001': Separator('d001', 8, 4), 'd002': Separator('d002', 80, 4)}
-transmitter = {'pi001': Transmitter('pressure', 'pi001'), 'li001': Transmitter('level oil', 'li001'),
-               'li003': Transmitter('level water', 'li003'), 'fi001': Transmitter('flow', 'fi001'),
-               'li002': Transmitter('level oil', 'li002')}
-valve = {'fv001': Valve('fv001', 'oil', 1)}
-controller = {'lic001': Controller('lic001')}
+dummy = {'dummy0': Dummy('dummy0'),
+         'dummy50': Dummy('dummy50'),
+         'dummy500': Dummy('dummy500')}
 
-dummyDraw = {'dummy0': [0, 0, 0], 'dummy50': [50, 500, 30], 'dummy500': [500, 500, 500]}
-separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), 50, 100],
+separator = {'d001': Separator('d001', 8, 4),
+             'd002': Separator('d002', 80, 4)}
+
+transmitter = {'pi001': Transmitter('pressure', 'pi001'),
+               'li001': Transmitter('level oil', 'li001'),
+               'li003': Transmitter('level water', 'li003'),
+               'fi001': Transmitter('flow', 'fi001'),
+               'li002': Transmitter('level oil', 'li002')}
+
+valve = {'fv001': Valve('fv001', 'oil', 1),
+         'fv002': Valve('fv002', 'gas', 3),
+         'fv003': Valve('fv003', 'water', 1)}
+         
+controller = {'lic001': Controller('lic001'),
+              'pic001': Controller('pic001'),
+              'lic002': Controller('lic002')}
+         
+'''Draw settings'''
+dummyDraw = {'dummy0': [0, 0, 0],
+             'dummy50': [50, 500, 30],
+             'dummy500': [500, 500, 500]}
+
+separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), valve.get('fv002'), valve.get('fv003'), 50, 100],
                  'd002': [valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), dummy.get('dummy0'), 750, 300]}
-transmitterDraw = {'pi001': [separator.get('d001'), 10, 10], 'li001': [separator.get('d001'), 200, 300],
-                   'li003': [separator.get('d001'), 150, 10], 'fi001': [valve.get('fv001'), 400, 100],
+         
+transmitterDraw = {'pi001': [separator.get('d001'), 10, 10],
+                   'li001': [separator.get('d001'), 200, 10],
+                   'li003': [separator.get('d001'), 170, 300],
+                   'fi001': [valve.get('fv001'), 550, 200],
                    'li002': [separator.get('d002'), 800, 200]}
-valveDraw = {'fv001': [separator.get('d001'), separator.get('d002'), 450, 300]}
-controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 5, 10, 5]}
+         
+valveDraw = {'fv001': [separator.get('d001'), separator.get('d002'), 450, 300],
+             'fv002': [separator.get('d001'), dummy.get('dummy0'), 370, 0],
+             'fv003': [separator.get('d001'), dummy.get('dummy0'), 200, 500]}
+         
+controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 5, 10, 5],
+                  'pic001': [transmitter.get('pi001'), valve.get('fv002'), 5, 10, 5],
+                  'lic002': [transmitter.get('li003'), valve.get('fv003'), 5, 10, 5]}
 
 # btn = sgc.Button(label='click', pos=(1000, 200))
 # btn.add(0)
@@ -603,14 +636,15 @@ def info_box(self, source):
     if self.rect.collidepoint(mPos) and edit and not clicked:
         font = pygame.font.SysFont('arial', 15, False)
         font_b = pygame.font.SysFont('arial', 15, True)
-        if tagId == 'separator':  # TODO: Fix crash when changing asset
-            info0 = font_b.render(str(self.tag), 1, (0, 0, 0))
-            info1 = font.render('source: ' + str(source.tag), 1, (0, 0, 0))
-            info2 = font.render('oil out: ' + str(self.oilOut.tag), 1, (0, 0, 0))
-            info3 = font.render('size: ' + str(self.volume), 1, (0, 0, 0))
+        color = (255, 255, 255)
+        if tagId == 'separator':
+            info0 = font_b.render(str(self.tag), 1, (color))
+            info1 = font.render('source: ' + str(source.tag), 1, (color))
+            info2 = font.render('oil out: ' + str(self.oilOut.tag), 1, (color))
+            info3 = font.render('size: ' + str(self.volume), 1, (color))
             width = info1.get_rect().width + 10
-            height = info0.get_rect().height + info1.get_rect().height + info2.get_rect().height - 5
-            pygame.draw.rect(screen, (255, 205, 186), (mPos[0] + 20, mPos[1], width, height))  # TODO: Make width dependent in longest string
+            #height = info0.get_rect().height + info1.get_rect().height + info2.get_rect().height + info3.get_rect().height - 5
+            #pygame.draw.rect(screen, (255, 205, 186), (mPos[0] + 20, mPos[1], width, 20))  # TODO: Make width dependent in longest string
 
             screen.blit(info0, (mPos[0] + 25, mPos[1]))
             screen.blit(info1, (mPos[0] + 25, mPos[1] + 15))
@@ -619,9 +653,9 @@ def info_box(self, source):
 
 
 def faceplate_valve(self):
+    global facep
     font = pygame.font.SysFont('consolas', 15, False)
     font_b = pygame.font.SysFont('arial', 20, True)
-    facep = pygame.image.load('fp.png')
     ex_btn = Button('X')
     man_btn = Button('manuel')
     aut_btn = Button('auto')
@@ -629,10 +663,9 @@ def faceplate_valve(self):
     if not edit and self.rect.collidepoint(mPos) and lClicked:
         self.faceplate = True
     if self.faceplate:
-        screen.blit(facep, [self.x, self.y + self.height + 8])
-        plate = facep.get_rect()
-        #plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
-        #pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
+        #plate = screen.blit(facep, (self.x, self.y + self.height + 8))
+        plate = pygame.draw.rect(screen, (193, 193, 193), (self.x, self.y + self.height + 10, 150, 200))
+        pygame.draw.rect(screen, (0, 0, 0), (self.x, self.y + self.height + 10, 150, 200), 1)
         tag = font_b.render(str(self.tag), 1, (0, 0, 0))
         opening = font.render('Output: ' + str(round(self.opening, 2)) + ' %', 1, (0, 0, 0))
         screen.blit(tag, (plate.x - tag.get_rect().width / 2 + plate.width / 2, plate.y))
@@ -644,8 +677,8 @@ def faceplate_valve(self):
 
         pygame.draw.rect(screen, (28, 173, 0),
                          (plate.x + 10, plate.y + plate.height - 10 - 1 * self.opening, 10, 1 * self.opening))
-        #pygame.draw.rect(screen, (255, 255, 255),
-                         #(plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
+        pygame.draw.rect(screen, (255, 255, 255),
+                         (plate.x + 10, plate.y + plate.height - 110 , 10, 100), 1)
 
         if ex_btn.click:
             self.faceplate = False
@@ -734,6 +767,30 @@ def clear():
     valveDraw.clear()
     controller.clear()
     controllerDraw.clear()
+
+
+def save():
+    pickle.dump(separator, open('sepsave.p', 'wb'))
+    pickle.dump(separatorDraw, open('sepdsave.p', 'wb'))
+    pickle.dump(transmitter, open('transsave.p', 'wb'))
+    pickle.dump(transmitterDraw, open('transdsave.p', 'wb'))
+    pickle.dump(valve, open('valsave.p', 'wb'))
+    pickle.dump(valveDraw, open('valdsave.p', 'wb'))
+    pickle.dump(controller, open('contsave.p', 'wb'))
+    pickle.dump(controllerDraw, open('contdsave.p', 'wb'))
+    
+
+
+def load():    
+    separator = pickle.load(open('sepsave.p', 'rb'))
+    separatorDraw = pickle.load(open('sepdsave.p', 'rb'))
+    transmitter = pickle.load(open('transsave.p', 'rb'))
+    transmitterDraw = pickle.load(open('transdsave.p', 'rb'))
+    valve = pickle.load(open('valsave.p', 'rb'))
+    valveDraw = pickle.load(open('valdsave.p', 'rb'))
+    controller = pickle.load(open('contsave.p', 'rb'))
+    controllerDraw = pickle.load(open('contdsave.p', 'rb'))
+    print(separator)
     
 
 '''def is_mouse_inside(x, y, width, height):
@@ -797,7 +854,7 @@ def redraw():
 
 run = True
 while run:
-    
+
     rW = screen.get_width()  # Gets current width of the screen
     rH = screen.get_height()  # Gets current height of the screen
     clock.tick(userFPS)
