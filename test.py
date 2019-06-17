@@ -38,7 +38,7 @@ tagId = ''
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
 
-userFPS = 30
+userFPS = 300
 clock = pygame.time.Clock()
 
 #facep = pygame.image.load('fp.png')
@@ -451,11 +451,11 @@ transmitter = {'pi001': Transmitter('pressure', 'pi001'),
 valve = {'fv001': Valve('fv001', 'oil', 1),
          'fv002': Valve('fv002', 'gas', 3),
          'fv003': Valve('fv003', 'water', 1)}
-         
+
 controller = {'lic001': Controller('lic001'),
               'pic001': Controller('pic001'),
               'lic002': Controller('lic002')}
-         
+
 '''Draw settings'''
 dummyDraw = {'dummy0': [0, 0, 0],
              'dummy50': [50, 500, 30],
@@ -463,17 +463,17 @@ dummyDraw = {'dummy0': [0, 0, 0],
 
 separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), valve.get('fv002'), valve.get('fv003'), 50, 100],
                  'd002': [valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), dummy.get('dummy0'), 750, 300]}
-         
+
 transmitterDraw = {'pi001': [separator.get('d001'), 10, 10],
                    'li001': [separator.get('d001'), 200, 10],
                    'li003': [separator.get('d001'), 170, 300],
                    'fi001': [valve.get('fv001'), 550, 200],
                    'li002': [separator.get('d002'), 800, 200]}
-         
+
 valveDraw = {'fv001': [separator.get('d001'), separator.get('d002'), 450, 300],
              'fv002': [separator.get('d001'), dummy.get('dummy0'), 370, 0],
              'fv003': [separator.get('d001'), dummy.get('dummy0'), 200, 500]}
-         
+
 controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 5, 10, 5],
                   'pic001': [transmitter.get('pi001'), valve.get('fv002'), 5, 10, 5],
                   'lic002': [transmitter.get('li003'), valve.get('fv003'), 5, 10, 5]}
@@ -781,7 +781,8 @@ def save():
     print('Saved')
 
 
-def load():    
+def load():
+    global separator, separatorDraw, separatorDraw, transmitter, transmitterDraw, valve, valveDraw, controller, controllerDraw
     separator = pickle.load(open('sepsave.p', 'rb'))
     separatorDraw = pickle.load(open('sepdsave.p', 'rb'))
     transmitter = pickle.load(open('transsave.p', 'rb'))
@@ -790,7 +791,7 @@ def load():
     valveDraw = pickle.load(open('valdsave.p', 'rb'))
     controller = pickle.load(open('contsave.p', 'rb'))
     controllerDraw = pickle.load(open('contdsave.p', 'rb'))
-    print(separator)
+    print('loading')
 
 
 time = 0
@@ -799,10 +800,11 @@ trendl = []
 tlines = []
 def trend(tag):  # TODO: Fix first line and how long trend is
     global time, shift
-    trendl.append(tag.opening)
+    trendl.append(tag.levelOil)
     shift += 1
     for i in range(len(trendl)):
-        tlines.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - shift, -trendl[i-1]*5 + 500), ((500 + i) - shift, -trendl[i]*5 + 500), 5))
+        tlines.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - shift, -trendl[i-1]*50 + 500), ((500 + i) - shift, -trendl[i]*50 + 500), 5))
+
 
 '''def is_mouse_inside(x, y, width, height):
     m_pos = pygame.mouse.get_pos()
@@ -823,7 +825,7 @@ nTransmitterBtn = Button('New Transmitter', new_transmitter)
 
 def redraw():
     screen.fill((128, 128, 128))
-    
+
     '''Drawing stuff in the dictionaries'''
     draw_transmitter()
     draw_sep()
@@ -859,7 +861,7 @@ def redraw():
         pauseBtn.color = (30, 191, 86)
         
     pygame.display.set_caption('Python Control System --- FPS: ' + str(round(trueFPS, 1)) + ' --- ' + str(round(simSpeed, 1)) + '%')
-    trend(valve.get('fv001'))
+    trend(separator.get('d001'))
     # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
 

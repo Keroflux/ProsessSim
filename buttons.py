@@ -1,6 +1,7 @@
 import pygame
 import sgc
 from sgc.locals import *
+import textbox
 
 pygame.init()
 wScreen = 1200
@@ -22,9 +23,7 @@ btn = sgc.Button(label='click', pos=(100, 200))
 btn.add(0)
 
 
-class InBox(sgc.InputBox):
-    def on_enter(self):
-        print('no')
+inputbx = textbox.TextInput()
 
 
 
@@ -32,7 +31,7 @@ def test():
     print('test')
 
 
-tBox = InBox()
+tBox = sgc.InputBox()
 tBox.add(0)
 
 testt = 'test'
@@ -43,12 +42,16 @@ hz = fontB.render(testt, 1, (0, 0, 0))
 
 
 def redraw():
+    global testt
     screen.fill((128, 128, 128))
     sgc.update(clock.tick(userFPS))
     fontB = pygame.font.SysFont('arial', 25, True)
-    testt = tBox.text
+    if clicked:
+        testt = tBox.text
+
     hz = fontB.render(testt, 1, (0, 0, 0))
     screen.blit(hz, (300, 5))
+    screen.blit(inputbx.get_surface(), (100, 100))
     pygame.display.flip()
 
 
@@ -58,12 +61,12 @@ while run:
     mPos = pygame.mouse.get_pos()
     trueFPS = clock.get_fps()
 
-    for event in pygame.event.get():
+    events = pygame.event.get()
+    for event in events:
         sgc.event(event)
         if event.type == GUI:
-            if event.widget_type == InBox:
-                print(event)
-                testt = event.text
+            if event.widget_type == tBox:
+                pass
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -74,7 +77,7 @@ while run:
             rClicked = False
             clickCount = 0
 
-
+        inputbx.update(events)
         # Makes the window resizable
         if event.type == pygame.VIDEORESIZE:
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
@@ -92,6 +95,7 @@ while run:
                 pause = False
 
     redraw()
+
 
 pygame.quit()
 
