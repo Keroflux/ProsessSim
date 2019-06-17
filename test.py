@@ -35,7 +35,6 @@ tagInfo = ''
 tagId = ''
 
 
-
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 # screen = sgc.surface.Screen((640,480))
 
@@ -770,6 +769,7 @@ def clear():
 
 
 def save():
+    print('Saving...')
     pickle.dump(separator, open('sepsave.p', 'wb'))
     pickle.dump(separatorDraw, open('sepdsave.p', 'wb'))
     pickle.dump(transmitter, open('transsave.p', 'wb'))
@@ -778,7 +778,7 @@ def save():
     pickle.dump(valveDraw, open('valdsave.p', 'wb'))
     pickle.dump(controller, open('contsave.p', 'wb'))
     pickle.dump(controllerDraw, open('contdsave.p', 'wb'))
-    
+    print('Saved')
 
 
 def load():    
@@ -791,7 +791,18 @@ def load():
     controller = pickle.load(open('contsave.p', 'rb'))
     controllerDraw = pickle.load(open('contdsave.p', 'rb'))
     print(separator)
-    
+
+
+time = 0
+shift = 0
+trendl = []
+tlines = []
+def trend(tag):  # TODO: Fix first line and how long trend is
+    global time, shift
+    trendl.append(tag.opening)
+    shift += 1
+    for i in range(len(trendl)):
+        tlines.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - shift, -trendl[i-1]*5 + 500), ((500 + i) - shift, -trendl[i]*5 + 500), 5))
 
 '''def is_mouse_inside(x, y, width, height):
     m_pos = pygame.mouse.get_pos()
@@ -803,6 +814,7 @@ def load():
 pauseBtn = Button('Pause', pause_sim)
 testBtn = Button('Clear', clear)
 editBtn = Button('Edit', edit_mode)
+saveBtn = Button('Save', save)
 '''Left click menu'''
 nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
@@ -818,11 +830,11 @@ def redraw():
     draw_dummy()
     draw_valve()
     draw_controller()
-    
     '''Draw UI'''
     pauseBtn.draw(100, rH - 35)
     testBtn.draw(pauseBtn.x + 110, rH - 35)
     editBtn.draw(testBtn.x + 110, rH - 35)
+    saveBtn.draw(editBtn.x + 110, rH - 35)
 
     edit_menu()
 
@@ -847,14 +859,14 @@ def redraw():
         pauseBtn.color = (30, 191, 86)
         
     pygame.display.set_caption('Python Control System --- FPS: ' + str(round(trueFPS, 1)) + ' --- ' + str(round(simSpeed, 1)) + '%')
-    
+    trend(valve.get('fv001'))
     # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
 
 
 run = True
 while run:
-
+    
     rW = screen.get_width()  # Gets current width of the screen
     rH = screen.get_height()  # Gets current height of the screen
     clock.tick(userFPS)
@@ -914,7 +926,7 @@ while run:
         if keys[pygame.K_LCTRL]:
             speed = 3 / (trueFPS + 0.01)
         else:
-            speed = 0.3 / (trueFPS + 0.01)
+            speed = 0.05 / (trueFPS + 0.01)
         if keys[pygame.K_LEFT]:
             panX = panX + speed
         if keys[pygame.K_RIGHT]:
