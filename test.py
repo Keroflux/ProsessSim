@@ -4,8 +4,6 @@
 import pygame
 import pickle
 
-# import sgc
-
 pygame.init()
 
 wScreen = 1200
@@ -36,7 +34,6 @@ tagId = ''
 
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
-# screen = sgc.surface.Screen((640,480))
 
 userFPS = 300
 clock = pygame.time.Clock()
@@ -76,6 +73,7 @@ class Separator(object):
         self.clicked = False
         self.rect = 0
         self.oilOut = 0
+        self.trendLevelOil = []
 
     def draw(self, source, out_oil, out_gas, out_water, x=10, y=10):
         global tagInfo, tagId
@@ -161,6 +159,7 @@ class Transmitter(object):
         self.newY = 0
         self.clicked = False
         self.rect = 0
+        self.trendValue = []
 
     def draw(self, measuring_point, x=10, y=10):
         global tagInfo, tagId
@@ -186,6 +185,7 @@ class Transmitter(object):
             screen.blit(content, (self.x, self.y))
 
             self.value = measuring_point.pressure
+            self.trendValue.append(self.value)
 
         elif self.typ == 'level oil':
             content = font.render('Level: ', 1, (255, 255, 255))
@@ -194,6 +194,10 @@ class Transmitter(object):
             screen.blit(value, (self.x + 5, self.y + 20))
 
             self.value = measuring_point.levelOil
+            
+            self.trendValue.append(self.value)
+            #if len(self.trendValue) > 10:
+                #self.trendValue.pop(0)
 
         elif self.typ == 'level water':
             content = font.render('Level: ', 1, (255, 255, 255))
@@ -432,6 +436,23 @@ class Button(object):
             clickCount += 1
         else:
             self.click = False
+            
+
+class Trend(object):
+    def __init__(self):
+        self.trend = []
+        self.series = []
+        self.shift = 0
+        
+    def draw(self, tag):
+        self.trend = []
+        self.series = transmitter.get(tag).trendValue
+        self.shift += 1
+        for i in range(len(self.series)):
+            if len(self.trend) > 1:
+                self.trend.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - self.shift, -self.series[i-1]*50 + 500), ((500 + i) - self.shift, -self.series[i]*50 + 500), 2))
+            else:
+                self.trend.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i) - self.shift, -self.series[i]*50 + 500), ((500 + i) - self.shift, -self.series[i]*50 + 500), 2))
     
 
 '''Drawing from dictionaries, default content'''
@@ -478,9 +499,9 @@ controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 5, 10
                   'pic001': [transmitter.get('pi001'), valve.get('fv002'), 5, 10, 5],
                   'lic002': [transmitter.get('li003'), valve.get('fv003'), 5, 10, 5]}
 
-# btn = sgc.Button(label='click', pos=(1000, 200))
-# btn.add(0)
-
+'''Trends'''
+ntrend = Trend()
+mtrend = Trend()
 
 def pipe(start, end, size):
     y1 = 2
@@ -794,22 +815,8 @@ def load():
     print('loading')
 
 
-time = 0
-shift = 0
-trendl = []
-tlines = []
-def trend(tag):  # TODO: Fix first line and how long trend is
-    global time, shift
-    trendl.append(tag.levelOil)
-    shift += 1
-    for i in range(len(trendl)):
-        tlines.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - shift, -trendl[i-1]*50 + 500), ((500 + i) - shift, -trendl[i]*50 + 500), 5))
-
-
-'''def is_mouse_inside(x, y, width, height):
-    m_pos = pygame.mouse.get_pos()
-    if x < m_pos[0] < x + width and y < m_pos[1] < y + height:
-        return True'''
+def new_trend(tag):
+    pass
 
 
 '''Setting up UI'''
@@ -840,6 +847,9 @@ def redraw():
 
     edit_menu()
 
+    ntrend.draw('li001')
+    mtrend.draw('pi001')
+
     #pygame.draw.rect(screen, (255, 205, 186), (0, 0, rW, 30))
 
     '''Debug text'''
@@ -861,8 +871,6 @@ def redraw():
         pauseBtn.color = (30, 191, 86)
         
     pygame.display.set_caption('Python Control System --- FPS: ' + str(round(trueFPS, 1)) + ' --- ' + str(round(simSpeed, 1)) + '%')
-    trend(separator.get('d001'))
-    # sgc.update(clock.tick(userFPS))
     pygame.display.flip()
 
 
@@ -883,7 +891,6 @@ while run:
         timeStep = 1 / trueFPS
 
     for event in pygame.event.get():
-        # sgc.event(event)
         if event.type == pygame.QUIT:
             run = False
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -903,9 +910,6 @@ while run:
             clickCount = 0
         if event.type == pygame.MOUSEMOTION:
             tagInfo = ''
-                
-        # if event.type == GUI:
-        # print(event)
 
         if event.type == pygame.VIDEORESIZE: # Makes the window resizable
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
@@ -928,7 +932,7 @@ while run:
         if keys[pygame.K_LCTRL]:
             speed = 3 / (trueFPS + 0.01)
         else:
-            speed = 0.05 / (trueFPS + 0.01)
+            speed = 0.5 / (trueFPS + 0.01)
         if keys[pygame.K_LEFT]:
             panX = panX + speed
         if keys[pygame.K_RIGHT]:
