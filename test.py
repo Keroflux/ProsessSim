@@ -43,17 +43,17 @@ clock = pygame.time.Clock()
 
 class Separator(object):
 
-    def __init__(self, tag, volume=8, volume_water_chamber=4):
+    def __init__(self):
         self.width = 300
         self.height = 120
         self.x = 0
         self.y = 0
 
         self.id = 'separator'
-        self.tag = tag
+        self.tag = 0
 
-        self.volume = volume
-        self.volume_water_chamber = volume_water_chamber
+        self.volume = 0
+        self.volume_water_chamber = 0
         self.pressure = 1
         self.temperature = 0
         self.volumeGas = 0
@@ -75,10 +75,13 @@ class Separator(object):
         self.oilOut = 0
         self.trendLevelOil = []
 
-    def draw(self, source, out_oil, out_gas, out_water, x=10, y=10):
+    def draw(self, source, out_oil, out_gas, out_water, x=10, y=10, tag='d00x', volume=8, volume_water_chamber=4):
         global tagInfo, tagId
 
         self.oilOut = out_oil
+        self.tag = tag
+        self.volume = volume
+        self.volume_water_chamber = volume_water_chamber
         # TODO: fix temp calc
         td = source.temperature / ambientTemperature
         self.temperature = source.temperature - td
@@ -145,24 +148,28 @@ class Separator(object):
 
 class Transmitter(object):
 
-    def __init__(self, typ, tag):
+    def __init__(self):
         self.id = 'transmitter'
         self.width = 100
         self.height = 50
         self.value = 0
         self.x = 0
         self.y = 0
-        self.typ = typ
-        self.tag = tag
+        self.typ = 0
+        self.tag = 0
 
         self.newX = 0
         self.newY = 0
         self.clicked = False
-        self.rect = 0
+        self.rect = pygame.draw.rect(screen, (75, 75, 75), (self.x, self.y, self.width, self.height))
         self.trendValue = []
 
-    def draw(self, measuring_point, x=10, y=10):
+    def draw(self, measuring_point, x, y, typ, tag='t00x'):
         global tagInfo, tagId
+        
+        self.typ = typ
+        self.tag = tag
+        
         self.rect = pygame.draw.rect(screen, (75, 75, 75), (self.x, self.y, self.width, self.height))
         pygame.draw.line(screen, (255, 255, 255), (self.x + self.width / 2, self.y + self.height),
                          (self.x + self.width / 2, measuring_point.y))
@@ -214,12 +221,12 @@ class Transmitter(object):
             self.value = measuring_point.flow
 
         else:
-            content = font.render('fault: ' + str(round(measuring_point, 2)) + '%', 1, (255, 255, 255))
+            content = font.render('fault: ' + str(self.typ) + '%', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
 
 
 class Valve(object):
-    def __init__(self, tag, typ, size=2):
+    def __init__(self):
         self.id = 'valve'
         self.tag = tag
         self.width = 100
@@ -234,9 +241,8 @@ class Valve(object):
         self.dP = 0
         self.temperature = 0
 
-        self.size = size
-        self.typ = typ
-
+        self.size = 0
+        self.typ = 0
         self.x = 0
         self.y = 0
         self.newX = 0
@@ -247,8 +253,12 @@ class Valve(object):
         self.faceplate = False
         self.auto = True
 
-    def draw(self, source, out_source, x, y):
+    def draw(self, source, out_source, x, y, tag, typ, size=2):
         global tagInfo, tagId
+
+        self.tag = tag
+        self.typ = typ
+        self.size = size
         self.dP = source.pressure - out_source.pressure
 
         if self.opening < 0:
@@ -304,9 +314,9 @@ class Valve(object):
 
 
 class Controller(object):
-    def __init__(self, tag):
+    def __init__(self):
         self.id = 'controller'
-        self.tag = tag
+        self.tag = 0
         self.p = 0
         self.i = 0
         self.d = 0
@@ -328,7 +338,7 @@ class Controller(object):
         self.target = 0
         self.source = 0
 
-    def draw(self, source, target, p_value=5, i_value=10, d_value=5):
+    def draw(self, source, target, p_value=5, i_value=10, d_value=5, tag='c00x'):
         global tagInfo, tagId
         self.x = source.x
         self.y = source.y
@@ -337,6 +347,7 @@ class Controller(object):
         self.rect = source.rect
         self.target = target
         self.source = source
+        self.tag = tag
 
         faceplate_controller(self)
 
@@ -455,49 +466,65 @@ class Trend(object):
                 self.trend.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i) - self.shift, -self.series[i]*50 + 500), ((500 + i) - self.shift, -self.series[i]*50 + 500), 2))
     
 
-'''Drawing from dictionaries, default content'''
-dummy = {'dummy0': Dummy('dummy0'),
-         'dummy50': Dummy('dummy50'),
-         'dummy500': Dummy('dummy500')}
+# Default settings for the sim
+setting = {'dummy0': ['dummy0', 0, 0, 0, 'dummy'],
+           'dummy50': ['dummy50', 50, 500, 30, 'dummy'],
+           'dummy500': ['dummy500', 500, 500, 500, 'dummy'],
 
-separator = {'d001': Separator('d001', 8, 4),
-             'd002': Separator('d002', 80, 4)}
+           'd001': ['dummy50', 'fv001', 'fv002', 'fv003', 50, 100, 'd001', 10, 4, 'separator'],
+           'd002': ['fv001', 'dummy0', 'dummy0', 'dummy0', 750, 300, 'd002', 20, 4, 'separator'],
 
-transmitter = {'pi001': Transmitter('pressure', 'pi001'),
-               'li001': Transmitter('level oil', 'li001'),
-               'li003': Transmitter('level water', 'li003'),
-               'fi001': Transmitter('flow', 'fi001'),
-               'li002': Transmitter('level oil', 'li002')}
+           'pi001': ['d001', 10, 10, 'pressure', 'pi001', 'transmitter'],
+           'li001': ['d001', 200, 10, 'level oil', 'li001', 'transmitter'],
+           'li003': ['d001', 170, 300, 'level water', 'li003', 'transmitter'],
+           'fi001': ['fv001', 550, 200, 'flow', 'fi001', 'transmitter'],
+           'li002': ['d002', 800, 200, 'level oil', 'li002', 'transmitter'],
 
-valve = {'fv001': Valve('fv001', 'oil', 1),
-         'fv002': Valve('fv002', 'gas', 3),
-         'fv003': Valve('fv003', 'water', 1)}
+           'fv001': ['d001', 'd002', 450, 300,'fv001', 'oil', 1, 'valve'],
+           'fv002': ['d001', 'dummy0', 370, 0, 'fv002', 'gas', 3, 'valve'],
+           'fv003': ['d001', 'dummy0', 200, 500, 'fv003', 'water', 1, 'valve'],
 
-controller = {'lic001': Controller('lic001'),
-              'pic001': Controller('pic001'),
-              'lic002': Controller('lic002')}
+           'lic001': ['li001', 'fv001', 5, 10, 5, 'lic001', 'controller'],
+           'pic001': ['pi001', 'fv002', 5, 10, 5, 'pic001', 'controller'],
+           'lic002': ['li003', 'fv003', 5, 10, 5, 'lic002', 'controller']
+           }
 
-'''Draw settings'''
-dummyDraw = {'dummy0': [0, 0, 0],
-             'dummy50': [50, 500, 30],
-             'dummy500': [500, 500, 500]}
+assets ={}
+print('loding assets...')
+for tag in setting:
+    if setting.get(tag)[-1] == 'separator':
+        assets.setdefault(tag, Separator())
+    elif setting.get(tag)[-1] == 'dummy':
+        assets.setdefault(tag, Dummy(tag))
+    elif setting.get(tag)[-1] == 'valve':
+        assets.setdefault(tag, Valve())
+    elif setting.get(tag)[-1] == 'transmitter':
+        assets.setdefault(tag, Transmitter())
+    elif setting.get(tag)[-1] == 'controller':
+        assets.setdefault(tag, Controller())
 
-separatorDraw = {'d001': [dummy.get('dummy50'), valve.get('fv001'), valve.get('fv002'), valve.get('fv003'), 50, 100],
-                 'd002': [valve.get('fv001'), dummy.get('dummy0'), dummy.get('dummy0'), dummy.get('dummy0'), 750, 300]}
-
-transmitterDraw = {'pi001': [separator.get('d001'), 10, 10],
-                   'li001': [separator.get('d001'), 200, 10],
-                   'li003': [separator.get('d001'), 170, 300],
-                   'fi001': [valve.get('fv001'), 550, 200],
-                   'li002': [separator.get('d002'), 800, 200]}
-
-valveDraw = {'fv001': [separator.get('d001'), separator.get('d002'), 450, 300],
-             'fv002': [separator.get('d001'), dummy.get('dummy0'), 370, 0],
-             'fv003': [separator.get('d001'), dummy.get('dummy0'), 200, 500]}
-
-controllerDraw = {'lic001': [transmitter.get('li001'), valve.get('fv001'), 5, 10, 5],
-                  'pic001': [transmitter.get('pi001'), valve.get('fv002'), 5, 10, 5],
-                  'lic002': [transmitter.get('li003'), valve.get('fv003'), 5, 10, 5]}
+assetsDraw ={}
+print('drawing assets...')
+for tag in setting:
+    if setting.get(tag)[-1] == 'separator':
+        assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]),
+                                    assets.get(setting.get(tag)[2]), assets.get(setting.get(tag)[3]),
+                                    setting.get(tag)[4], setting.get(tag)[5], setting.get(tag)[6],
+                                    setting.get(tag)[7], setting.get(tag)[8]])
+    elif setting.get(tag)[-1] == 'dummy':
+        assetsDraw.setdefault(tag, [setting.get(tag)[1], setting.get(tag)[2], setting.get(tag)[3]])
+    elif setting.get(tag)[-1] == 'transmitter':
+        assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), setting.get(tag)[1], setting.get(tag)[2],
+                                    setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5]])
+    elif setting.get(tag)[-1] == 'valve':
+        assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                    setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                    setting.get(tag)[6], setting.get(tag)[7]])
+    elif setting.get(tag)[-1] == 'controller':
+        assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                    setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                    setting.get(tag)[6]])
+    
 
 '''Trends'''
 ntrend = Trend()
@@ -525,34 +552,51 @@ def pipe(start, end, size):
         pygame.draw.line(screen, (255, 255, 255), (start.x + start.width - 2, start.y + y1), (x1, start.y + y1), size)
         pygame.draw.line(screen, (255, 255, 255), (x1, start.y + y1), (x1, end.y + y2), size)
         pygame.draw.line(screen, (255, 255, 255), (x1, end.y + y2), (end.x, end.y + y2), size)
-        
 
-def draw_dummy():
-    for tag in dummyDraw:
-        dummy.get(tag).draw(dummyDraw.get(tag)[0], dummyDraw.get(tag)[1], dummyDraw.get(tag)[2])
-        
+def draw_assets():
+    for tag in setting:
+        if setting.get(tag)[-1] == 'dummy':
+            assets.get(tag).draw(assetsDraw.get(tag)[0], assetsDraw.get(tag)[1], assetsDraw.get(tag)[2])
+        elif setting.get(tag)[-1] == 'separator':
+            assets.get(tag).draw(assetsDraw.get(tag)[0], assetsDraw.get(tag)[1],
+                                    assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
+                                    assetsDraw.get(tag)[4], assetsDraw.get(tag)[5],
+                                    assetsDraw.get(tag)[6], assetsDraw.get(tag)[7],
+                                    assetsDraw.get(tag)[8])
+        elif setting.get(tag)[-1] == 'transmitter':
+            assets.get(tag).draw(assetsDraw.get(tag)[0], assetsDraw.get(tag)[1],
+                                        assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
+                                        assetsDraw.get(tag)[4])
+        elif setting.get(tag)[-1] == 'valve':
+            assets.get(tag).draw(assetsDraw.get(tag)[0], assetsDraw.get(tag)[1],
+                                assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
+                                assetsDraw.get(tag)[4], assetsDraw.get(tag)[5],
+                                assetsDraw.get(tag)[6])
+        elif setting.get(tag)[-1] == 'controller':
+            assets.get(tag).draw(assetsDraw.get(tag)[0], assetsDraw.get(tag)[1],
+                                     assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
+                                     assetsDraw.get(tag)[4], assetsDraw.get(tag)[5])
 
-def new_sep(volume=8, volume_water=4, source=dummy.get('dummy0')):
+def new_sep(volume=8, volume_water=4, source=assets.get('dummy0')):
     tag = input('Tag: ')
     x = mPos[0]
     y = mPos[1]
     out = input('Out: ')
-    out_gas = dummy.get('dummy0')
-    out_water = dummy.get('dummy0')
-    if out in valve:
-        out_oil = valve.get(out)
+    out_gas = assets.get('dummy0')
+    nout_gas = 'dummy0'
+    out_water = assets.get('dummy0')
+    nout_water = 'dummy0'
+    nsource = 'dummy0'
+    if out in assets:
+        out_oil = assets.get(out)
+        nout_oil = out
     else:
-        out_oil = dummy.get('dummy0')
-        print(out + 'does not exist')
-    separator.setdefault(tag, Separator(tag, volume, volume_water))
-    separatorDraw.setdefault(tag, [source, out_oil, out_gas, out_water, x, y])
-
-
-def draw_sep():
-    for sep in separatorDraw:
-        separator.get(sep).draw(separatorDraw.get(sep)[0], separatorDraw.get(sep)[1],
-                                separatorDraw.get(sep)[2], separatorDraw.get(sep)[3],
-                                separatorDraw.get(sep)[4], separatorDraw.get(sep)[5])
+        out_oil = assets.get('dummy0')
+        nout_oil = 'dummy0'
+        print(out + 'does not exist, set to "dummy0"')
+    assets.setdefault(tag, Separator())
+    assetsDraw.setdefault(tag, [source, out_oil, out_gas, out_water, x, y, tag, volume, volume_water])
+    setting.setdefault(tag, [nsource, nout_oil, nout_gas, nout_water, x, y, tag, volume, volume_water, 'separator'])
 
 
 def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update
@@ -566,67 +610,46 @@ def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width c
         new_source = input('Old: ' + source.tag + ' New: ')
         if new_source == '':
             source = source
-        elif new_source in dummy:
-            source = dummy.get(new_source)
-        elif new_source in separator:
-            source = separator.get(new_source)
-        elif new_source in valve:
-            source = valve.get(new_source)
+        elif new_source in assets:
+            source = assets.get(new_source)
         else:
             print('Tag does not exist')
 
         new_out = input('New target:')
-        out_source = valve.get(new_out)
+        out_source = assets.get(new_out)
         
-        #separator.update({tag: Separator(tag, volume, volume_water)})
-        separatorDraw.update({tag: [source, out_source, x, y]})
+        assetsDraw.update({tag: [source, out_source, x, y]})
 
 
-def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=dummy.get('dummy0')):
+def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=assets.get('dummy0')):
     tag = input('Tag: ')
     new_src = input('Source: ')
-    source = separator.get(new_src)
+    source = assets.get(new_src)
     x = mPos[0]
     y = mPos[1]
-    transmitter.setdefault(tag, Transmitter(typ, tag))
-    transmitterDraw.setdefault(tag, [source, x, y])
+    transmitter.setdefault(tag, Transmitter())
+    transmitterDraw.setdefault(tag, [source, x, y, typ, tag])
 
 
-def draw_transmitter():
-    for trans in transmitterDraw:
-        transmitter.get(trans).draw(transmitterDraw.get(trans)[0], transmitterDraw.get(trans)[1],
-                                    transmitterDraw.get(trans)[2])
-
-
-def new_valve(tag='v001', typ='oil', size=1, source=dummy.get('dummy0'), out_source=dummy.get('dummy0'), x=1000, y=100):
+def new_valve(tag='v001', typ='oil', size=1, source=assets.get('dummy0'), out_source=assets.get('dummy0'), x=1000, y=100):
     tag = input('Tag: ')
     new_src = input('source: ')
-    source = separator.get(new_src)
+    source = assets.get(new_src)
     x = mPos[0]
     y = mPos[1]
-    valve.setdefault(tag, Valve(tag, typ, size))
-    valveDraw.setdefault(tag, [source, out_source, x, y])
-
-
-def draw_valve():
-    for tag in valveDraw:
-        valve.get(tag).draw(valveDraw.get(tag)[0], valveDraw.get(tag)[1],
-                            valveDraw.get(tag)[2], valveDraw.get(tag)[3])
+    assets.setdefault(tag, Valve())
+    assetsDraw.setdefault(tag, [source, out_source, x, y, tag, typ, size])
+    setting.setdefault(tag, [new_src, 'dummy0', x, y, tag, typ, size, 'valve'])
 
 
 def new_controller(tag='c001', source='dummy0', target='dummy0', p=5, i=10, d=5):
     tag = input('Tag: ')
     new_src = input('Source: ')
-    source = transmitter.get(new_src)
-    controller.setdefault(tag, Controller(tag))
-    controllerDraw.setdefault(tag, [source, target, p, i, d])
+    source = assets.get(new_src)
+    assets.setdefault(tag, Controller())
+    assetsDraw.setdefault(tag, [source, target, p, i, d, tag])
+    setting.setdefault(tag, [source, target, p, i, d, tag, 'controller'])
     
-
-def draw_controller():
-    for tag in controllerDraw:
-        controller.get(tag).draw(controllerDraw.get(tag)[0], controllerDraw.get(tag)[1],
-                                 controllerDraw.get(tag)[2], controllerDraw.get(tag)[3])
-
 
 def move(self, x, y):  # Function for moving assets
     global adjPosX, adjPosY
@@ -779,39 +802,51 @@ def edit_mode():
 
 
 def clear():
-    separator.clear()
-    separatorDraw.clear()
-    transmitter.clear()
-    transmitterDraw.clear()
-    valve.clear()
-    valveDraw.clear()
-    controller.clear()
-    controllerDraw.clear()
-
+    setting.clear()
+    assets.clear()
+    assetsDraw.clear()
 
 def save():
     print('Saving...')
-    pickle.dump(separator, open('sepsave.p', 'wb'))
-    pickle.dump(separatorDraw, open('sepdsave.p', 'wb'))
-    pickle.dump(transmitter, open('transsave.p', 'wb'))
-    pickle.dump(transmitterDraw, open('transdsave.p', 'wb'))
-    pickle.dump(valve, open('valsave.p', 'wb'))
-    pickle.dump(valveDraw, open('valdsave.p', 'wb'))
-    pickle.dump(controller, open('contsave.p', 'wb'))
-    pickle.dump(controllerDraw, open('contdsave.p', 'wb'))
+    pickle.dump(setting, open('save.p', 'wb'))
     print('Saved')
 
 
 def load():
-    global separator, separatorDraw, separatorDraw, transmitter, transmitterDraw, valve, valveDraw, controller, controllerDraw
-    separator = pickle.load(open('sepsave.p', 'rb'))
-    separatorDraw = pickle.load(open('sepdsave.p', 'rb'))
-    transmitter = pickle.load(open('transsave.p', 'rb'))
-    transmitterDraw = pickle.load(open('transdsave.p', 'rb'))
-    valve = pickle.load(open('valsave.p', 'rb'))
-    valveDraw = pickle.load(open('valdsave.p', 'rb'))
-    controller = pickle.load(open('contsave.p', 'rb'))
-    controllerDraw = pickle.load(open('contdsave.p', 'rb'))
+    global setting
+    setting.update(pickle.load(open('save.p', 'rb')))
+    
+    for tag in setting:
+        if setting.get(tag)[-1] == 'separator':
+            assets.setdefault(tag, Separator())
+        elif setting.get(tag)[-1] == 'dummy':
+            assets.setdefault(tag, Dummy(tag))
+        elif setting.get(tag)[-1] == 'valve':
+            assets.setdefault(tag, Valve())
+        elif setting.get(tag)[-1] == 'transmitter':
+            assets.setdefault(tag, Transmitter())
+        elif setting.get(tag)[-1] == 'controller':
+            assets.setdefault(tag, Controller())
+
+    for tag in setting:
+        if setting.get(tag)[-1] == 'separator':
+            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]),
+                                        assets.get(setting.get(tag)[2]), assets.get(setting.get(tag)[3]),
+                                        setting.get(tag)[4], setting.get(tag)[5], setting.get(tag)[6],
+                                        setting.get(tag)[7], setting.get(tag)[8]])
+        elif setting.get(tag)[-1] == 'dummy':
+            assetsDraw.setdefault(tag, [setting.get(tag)[1], setting.get(tag)[2], setting.get(tag)[3]])
+        elif setting.get(tag)[-1] == 'transmitter':
+            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), setting.get(tag)[1], setting.get(tag)[2],
+                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5]])
+        elif setting.get(tag)[-1] == 'valve':
+            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                        setting.get(tag)[6], setting.get(tag)[7]])
+        elif setting.get(tag)[-1] == 'controller':
+            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                        setting.get(tag)[6]])
     print('loading')
 
 
@@ -824,6 +859,7 @@ pauseBtn = Button('Pause', pause_sim)
 testBtn = Button('Clear', clear)
 editBtn = Button('Edit', edit_mode)
 saveBtn = Button('Save', save)
+loadBtn = Button('Load', load)
 '''Left click menu'''
 nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
@@ -834,21 +870,18 @@ def redraw():
     screen.fill((128, 128, 128))
 
     '''Drawing stuff in the dictionaries'''
-    draw_transmitter()
-    draw_sep()
-    draw_dummy()
-    draw_valve()
-    draw_controller()
+    draw_assets()
     '''Draw UI'''
     pauseBtn.draw(100, rH - 35)
     testBtn.draw(pauseBtn.x + 110, rH - 35)
     editBtn.draw(testBtn.x + 110, rH - 35)
     saveBtn.draw(editBtn.x + 110, rH - 35)
+    loadBtn.draw(saveBtn.x + 110, rH - 35)
 
     edit_menu()
 
-    ntrend.draw('li001')
-    mtrend.draw('pi001')
+    #ntrend.draw('li001')
+    #mtrend.draw('pi001')
 
     #pygame.draw.rect(screen, (255, 205, 186), (0, 0, rW, 30))
 
