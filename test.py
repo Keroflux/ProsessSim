@@ -22,20 +22,28 @@ pause = False
 clicked = False
 rClicked = False
 lClicked = False
+enter = False
 edit = False
 clickCount = 0
 menu = False
+editMenu = False
 
 adjPosX = 1
 adjPosY = 1
 
 tagInfo = ''
 tagId = ''
+currentTag = ''
+
+# Textbox things
+COLOR_INACTIVE = pygame.Color('lightskyblue3')
+COLOR_ACTIVE = pygame.Color('azure1')
+FONT = pygame.font.Font(None, 32)
 
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
 
-userFPS = 300
+userFPS = 30
 clock = pygame.time.Clock()
 
 #facep = pygame.image.load('fp.png')
@@ -464,6 +472,50 @@ class Trend(object):
                 self.trend.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i-1) - self.shift, -self.series[i-1]*50 + 500), ((500 + i) - self.shift, -self.series[i]*50 + 500), 2))
             else:
                 self.trend.append(pygame.draw.line(screen, (255, 255, 255), ((500 + i) - self.shift, -self.series[i]*50 + 500), ((500 + i) - self.shift, -self.series[i]*50 + 500), 2))
+
+
+class InputBox:
+
+    def __init__(self, x, y, w, h, text='none'):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.color = COLOR_INACTIVE
+        self.text = text
+        self.txt_surface = FONT.render(text, True, self.color)
+        self.active = False
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # If the user clicked on the input_box rect.
+            if self.rect.collidepoint(event.pos):
+                # Toggle the active variable.
+                self.active = not self.active
+            else:
+                self.active = False
+            # Change the current color of the input box.
+            self.color = COLOR_ACTIVE if self.active else COLOR_INACTIVE
+        if event.type == pygame.KEYDOWN:
+            if self.active:
+                if event.key == pygame.K_RETURN:
+                    print(self.text)
+                    
+                    #self.text = ''
+                elif event.key == pygame.K_BACKSPACE:
+                    self.text = self.text[:-1]
+                else:
+                    self.text += event.unicode
+                # Re-render the text.
+                self.txt_surface = FONT.render(self.text, True, self.color)
+
+    def update(self):
+        # Resize the box if the text is too long.
+        width = max(200, self.txt_surface.get_width()+10)
+        self.rect.w = width
+
+    def draw(self, screen):
+        # Blit the text.
+        screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
+        # Blit the rect.
+        pygame.draw.rect(screen, self.color, self.rect, 2)
     
 
 # Default settings for the sim
@@ -599,26 +651,25 @@ def new_sep(volume=8, volume_water=4, source=assets.get('dummy0')):
     setting.setdefault(tag, [nsource, nout_oil, nout_gas, nout_water, x, y, tag, volume, volume_water, 'separator'])
 
 
-def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update
+def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update with textbox
+    global editMenu, currentTag, enter
     if self.rect.collidepoint(mPos) and rClicked and edit:
-        tag = self.tag
+        currentTag = self.tag
         source = source
         out_source = out_source
         x = self.x
         y = self.y
-        
-        new_source = input('Old: ' + source.tag + ' New: ')
-        if new_source == '':
-            source = source
-        elif new_source in assets:
-            source = assets.get(new_source)
-        else:
-            print('Tag does not exist')
-
-        new_out = input('New target:')
-        out_source = assets.get(new_out)
-        
-        assetsDraw.update({tag: [source, out_source, x, y]})
+        input_box1 = InputBox(700, 100, 140, 32, setting.get(currentTag)[0]) 
+        input_box2 = InputBox(700, 300, 140, 32)
+        input_boxes.append(input_box1)
+        editMenu = True
+    if editMenu:
+        if enter and input_boxes[0].active:
+            assetsDraw.get(currentTag)[0] = assets.get(input_boxes[0].text)
+            setting.get(currentTag)[0] = input_boxes[0].text
+            input_boxes.clear()
+            editMenu = False
+            enter = False
 
 
 def new_transmitter(tag='lll', typ='level oil', x=100, y=100, source=assets.get('dummy0')):
@@ -675,7 +726,7 @@ def move(self, x, y):  # Function for moving assets
 
 
 def info_box(self, source):
-    global tagInfo
+    global tagInfo, editMenu
     if self.rect.collidepoint(mPos) and edit and not clicked:
         font = pygame.font.SysFont('arial', 15, False)
         font_b = pygame.font.SysFont('arial', 15, True)
@@ -692,7 +743,7 @@ def info_box(self, source):
             screen.blit(info0, (mPos[0] + 25, mPos[1]))
             screen.blit(info1, (mPos[0] + 25, mPos[1] + 15))
             screen.blit(info2, (mPos[0] + 25, mPos[1] + 30))
-            screen.blit(info3, (mPos[0] + 25, mPos[1] + 45))
+            screen.blit(info3, (mPos[0] + 25, mPos[1] + 45))    
 
 
 def faceplate_valve(self):
@@ -772,7 +823,7 @@ def faceplate_controller(self):
         
 
 def edit_menu():
-    global menu, menuX, menuY
+    global menu, menux, menuX, menuY
     if edit and rClicked and tagInfo == '':
         menu = True
         menuX = mPos[0]
@@ -814,6 +865,7 @@ def save():
 
 def load():
     global setting
+    print('loading...')
     setting.update(pickle.load(open('save.p', 'rb')))
     
     for tag in setting:
@@ -847,7 +899,7 @@ def load():
             assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
                                         setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
                                         setting.get(tag)[6]])
-    print('loading')
+    print('done loading')
 
 
 def new_trend(tag):
@@ -865,6 +917,9 @@ nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
 nTransmitterBtn = Button('New Transmitter', new_transmitter)
 
+#Test of inputboxes
+input_boxes = []
+
 
 def redraw():
     screen.fill((128, 128, 128))
@@ -879,6 +934,9 @@ def redraw():
     loadBtn.draw(saveBtn.x + 110, rH - 35)
 
     edit_menu()
+
+    for box in input_boxes:
+        box.draw(screen)
 
     #ntrend.draw('li001')
     #mtrend.draw('pi001')
@@ -926,6 +984,8 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
+        for box in input_boxes:
+                box.handle_event(event)
         if event.type == pygame.MOUSEBUTTONDOWN:
             clicked = True
             if event.button == 1:
@@ -946,8 +1006,13 @@ while run:
 
         if event.type == pygame.VIDEORESIZE: # Makes the window resizable
             screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                enter = True
 
         if event.type == pygame.KEYUP:
+            if event.key == pygame.K_RETURN:
+                enter = False
             '''Edit mode'''
             if event.key == pygame.K_e and not edit:
                 edit = True
