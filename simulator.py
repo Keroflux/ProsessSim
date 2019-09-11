@@ -27,6 +27,7 @@ edit = False
 clickCount = 0
 menu = False
 editMenu = False
+newSep = False
 
 adjPosX = 1
 adjPosY = 1
@@ -36,9 +37,9 @@ tagId = ''
 currentTag = ''
 
 # Textbox things
-COLOR_INACTIVE = pygame.Color('lightskyblue3')
-COLOR_ACTIVE = pygame.Color('azure1')
-FONT = pygame.font.Font(None, 32)
+COLOR_INACTIVE = pygame.Color('gray39')
+COLOR_ACTIVE = pygame.Color('gray10')
+FONT = pygame.font.Font(None, 25)
 
 
 screen = pygame.display.set_mode((wScreen, hScreen), pygame.RESIZABLE)
@@ -476,7 +477,7 @@ class Trend(object):
 
 class InputBox:
 
-    def __init__(self, x, y, w, h, text='none'):
+    def __init__(self, x, y, w, h, text=''):
         self.rect = pygame.Rect(x, y, w, h)
         self.color = COLOR_INACTIVE
         self.text = text
@@ -496,8 +497,7 @@ class InputBox:
         if event.type == pygame.KEYDOWN:
             if self.active:
                 if event.key == pygame.K_RETURN:
-                    print(self.text)
-                    
+                    pass
                     #self.text = ''
                 elif event.key == pygame.K_BACKSPACE:
                     self.text = self.text[:-1]
@@ -512,10 +512,12 @@ class InputBox:
         self.rect.w = width
 
     def draw(self, screen):
+        # Blit the rect.
+        pygame.draw.rect(screen, (255, 255, 255), self.rect, 0)
+        pygame.draw.rect(screen, self.color, self.rect, 2)
         # Blit the text.
         screen.blit(self.txt_surface, (self.rect.x+5, self.rect.y+5))
-        # Blit the rect.
-        pygame.draw.rect(screen, self.color, self.rect, 2)
+        
     
 
 # Default settings for the sim
@@ -629,26 +631,44 @@ def draw_assets():
                                      assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
                                      assetsDraw.get(tag)[4], assetsDraw.get(tag)[5])
 
-def new_sep(volume=8, volume_water=4, source=assets.get('dummy0')):
-    tag = input('Tag: ')
+def new_sep():
+    global newSep
+    tag = 'd00x'
     x = mPos[0]
     y = mPos[1]
-    out = input('Out: ')
-    out_gas = assets.get('dummy0')
-    nout_gas = 'dummy0'
-    out_water = assets.get('dummy0')
-    nout_water = 'dummy0'
-    nsource = 'dummy0'
-    if out in assets:
-        out_oil = assets.get(out)
-        nout_oil = out
-    else:
-        out_oil = assets.get('dummy0')
-        nout_oil = 'dummy0'
-        print(out + 'does not exist, set to "dummy0"')
-    assets.setdefault(tag, Separator())
-    assetsDraw.setdefault(tag, [source, out_oil, out_gas, out_water, x, y, tag, volume, volume_water])
-    setting.setdefault(tag, [nsource, nout_oil, nout_gas, nout_water, x, y, tag, volume, volume_water, 'separator'])
+    out_oil = 'dummy0'
+    out_gas = 'dummy0'
+    out_gas = 'dummy0'
+    out_water = 'dummy0'
+    source = 'dummy0'
+    volume = 8
+    volume_water = 4
+    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 400))
+    if not newSep:
+        input_box1 = InputBox(plate.x + 10, plate.y + 30, 100, 25) 
+        input_box2 = InputBox(plate.x + 10, plate.y + 65, 100, 25)
+        input_boxes.append(input_box1)
+        input_boxes.append(input_box2)
+        newSep = True
+    elif newSep:
+        plate
+        heading = FONT.render('Add new separator', True, (0, 0, 0))
+        screen.blit(heading, (plate.x + 15, plate.y + 5))
+        tagTXT = FONT.render('Tag', True, (0, 0, 0))
+        screen.blit(tagTXT, (plate.x + 120, plate.y + 30))
+        sourceTXT = FONT.render('Tag', True, (0, 0, 0))
+        screen.blit(sourceTXT, (plate.x + 120, plate.y + 65))
+
+        if enter:
+            tag = input_boxes[0].text
+            source = input_boxes[1].text
+            assets.setdefault(tag, Separator())
+            assetsDraw.setdefault(tag, [assets.get(source), assets.get(out_oil),
+                                        assets.get(out_gas), assets.get(out_water), x, y, tag, volume, volume_water])
+            setting.setdefault(tag, [source, out_oil, out_gas, out_water, x, y, tag, volume, volume_water, 'separator'])
+            print(tag + ' created')
+            input_boxes.clear()
+            newSep = False
 
 
 def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update with textbox
@@ -702,8 +722,8 @@ def new_controller(tag='c001', source='dummy0', target='dummy0', p=5, i=10, d=5)
     setting.setdefault(tag, [source, target, p, i, d, tag, 'controller'])
     
 
-def move(self, x, y):  # Function for moving assets
-    global adjPosX, adjPosY
+def move(self, x, y):  # Function for moving assets. How the fuck does this work?!
+    global adjPosX, adjPosY # TODO: Update X/Y pos in setting for all assets
     if not self.clicked:
         self.x = x + panX
         self.y = y + panY
@@ -723,6 +743,10 @@ def move(self, x, y):  # Function for moving assets
             self.y = mPos[1] - self.height * adjPosY
             self.newX = self.x - panX
             self.newY = self.y - panY
+            print(self.id)
+            if self.id == 'separator':
+                setting.get(self.tag)[4] = self.newX
+                setting.get(self.tag)[5] = self.newY
 
 
 def info_box(self, source):
@@ -857,13 +881,13 @@ def clear():
     assets.clear()
     assetsDraw.clear()
 
-def save():
+def save(): # TODO: Chose save name
     print('Saving...')
     pickle.dump(setting, open('save.p', 'wb'))
     print('Saved')
 
 
-def load():
+def load(): # TODO: Chose witch save to load
     global setting
     print('loading...')
     setting.update(pickle.load(open('save.p', 'rb')))
@@ -916,15 +940,14 @@ loadBtn = Button('Load', load)
 nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
 nTransmitterBtn = Button('New Transmitter', new_transmitter)
-
-#Test of inputboxes
+'''Input boxes for edit menus'''
 input_boxes = []
 
 
 def redraw():
     screen.fill((128, 128, 128))
 
-    '''Drawing stuff in the dictionaries'''
+    '''Drawing stuff from the dictionaries'''
     draw_assets()
     '''Draw UI'''
     pauseBtn.draw(100, rH - 35)
@@ -935,20 +958,10 @@ def redraw():
 
     edit_menu()
 
-    for box in input_boxes:
-        box.draw(screen)
-
     #ntrend.draw('li001')
     #mtrend.draw('pi001')
 
     #pygame.draw.rect(screen, (255, 205, 186), (0, 0, rW, 30))
-
-    '''Debug text'''
-    '''font = pygame.font.SysFont('arial', 15, False)
-    debug = font.render(str(fv001.flowOil * m3h), 1, (0, 0, 0))
-    screen.blit(debug, (460, 5))
-    debug2 = font.render(str(fv001.flowWater * m3h), 1, (0, 0, 0))
-    screen.blit(debug2, (460, 25))'''
 
     if edit:
         font_b = pygame.font.SysFont('arial', 25, True)
@@ -960,6 +973,10 @@ def redraw():
         mode = font_b.render('PAUSE', 1, (0, 0, 0))
         screen.blit(mode, (650, 5))
         pauseBtn.color = (30, 191, 86)
+    if newSep:
+        new_sep()
+    for box in input_boxes:
+        box.draw(screen)
         
     pygame.display.set_caption('Python Control System --- FPS: ' + str(round(trueFPS, 1)) + ' --- ' + str(round(simSpeed, 1)) + '%')
     pygame.display.flip()
