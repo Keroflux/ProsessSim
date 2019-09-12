@@ -26,8 +26,10 @@ enter = False
 edit = False
 clickCount = 0
 menu = False
+menuSep = False
 editMenu = False
 newSep = False
+update = False
 
 adjPosX = 1
 adjPosY = 1
@@ -99,8 +101,7 @@ class Separator(object):
         pipe(self, out_gas, 4)
         pipe(self, out_water, 4)
         self.rect = pygame.draw.rect(screen, (85, 85, 85), (self.x, self.y, self.width, self.height))
-
-        update_sep(self, source, out_oil, x, y)
+        
         move(self, x, y)
         try:
             info_box(self, source)
@@ -224,7 +225,7 @@ class Transmitter(object):
             self.value = measuring_point.levelWater
 
         elif self.typ == 'flow':
-            content = font.render(str(round(measuring_point.flow * m3h, 2)) + 'm3/h', 1, (255, 255, 255))
+            content = font.render(str(round(measuring_point.flow * measuring_point.m3h, 2)) + 'm3/h', 1, (255, 255, 255))
             screen.blit(content, (self.x, self.y))
 
             self.value = measuring_point.flow
@@ -261,6 +262,7 @@ class Valve(object):
         self.rect = 0
         self.faceplate = False
         self.auto = True
+        self.m3h = 0
 
     def draw(self, source, out_source, x, y, tag, typ, size=2):
         global tagInfo, tagId
@@ -296,6 +298,7 @@ class Valve(object):
         if not pause:
             if self.typ == 'oil':
                 if source.cubesOil > 0:
+                    self.m3h = m3h
                     self.flowOil = self.size * self.dP * self.opening / m3h
                     self.flowGas = self.flowOil * source.gasInOil
                     self.flowWater = self.flowOil * source.waterInOil
@@ -631,7 +634,7 @@ def draw_assets():
                                      assetsDraw.get(tag)[2], assetsDraw.get(tag)[3],
                                      assetsDraw.get(tag)[4], assetsDraw.get(tag)[5])
 
-def new_sep():
+def new_sep(): # TODO: Add more options
     global newSep
     tag = 'd00x'
     x = mPos[0]
@@ -656,7 +659,7 @@ def new_sep():
         screen.blit(heading, (plate.x + 15, plate.y + 5))
         tagTXT = FONT.render('Tag', True, (0, 0, 0))
         screen.blit(tagTXT, (plate.x + 120, plate.y + 30))
-        sourceTXT = FONT.render('Tag', True, (0, 0, 0))
+        sourceTXT = FONT.render('Source', True, (0, 0, 0))
         screen.blit(sourceTXT, (plate.x + 120, plate.y + 65))
 
         if enter:
@@ -671,24 +674,40 @@ def new_sep():
             newSep = False
 
 
-def update_sep(self, source, out_source, x, y): # TODO: Make menu pop up width choises on what to update with textbox
-    global editMenu, currentTag, enter
-    if self.rect.collidepoint(mPos) and rClicked and edit:
-        currentTag = self.tag
-        source = source
-        out_source = out_source
-        x = self.x
-        y = self.y
-        input_box1 = InputBox(700, 100, 140, 32, setting.get(currentTag)[0]) 
-        input_box2 = InputBox(700, 300, 140, 32)
+def update_sep(): # TODO: Add more options
+    global update, enter
+    tag = currentTag
+    x = mPos[0]
+    y = mPos[1]
+    out_oil = 'dummy0'
+    out_gas = 'dummy0'
+    out_gas = 'dummy0'
+    out_water = 'dummy0'
+    source = 'dummy0'
+    volume = 8
+    volume_water = 4
+    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 400))
+    if not update:
+        input_box1 = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
+        input_box2 = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
         input_boxes.append(input_box1)
-        editMenu = True
-    if editMenu:
-        if enter and input_boxes[0].active:
+        input_boxes.append(input_box2)
+        update = True
+    if update:
+        plate
+        heading = FONT.render('Update ' + currentTag, True, (0, 0, 0))
+        screen.blit(heading, (plate.x + 15, plate.y + 5))
+        tagTXT = FONT.render('Source', True, (0, 0, 0))
+        screen.blit(tagTXT, (plate.x + 120, plate.y + 30))
+        sourceTXT = FONT.render('Oil out', True, (0, 0, 0))
+        screen.blit(sourceTXT, (plate.x + 120, plate.y + 65))
+        if enter:
             assetsDraw.get(currentTag)[0] = assets.get(input_boxes[0].text)
+            assetsDraw.get(currentTag)[1] = assets.get(input_boxes[1].text)
             setting.get(currentTag)[0] = input_boxes[0].text
+            setting.get(currentTag)[1] = input_boxes[1].text
             input_boxes.clear()
-            editMenu = False
+            update = False
             enter = False
 
 
@@ -743,19 +762,23 @@ def move(self, x, y):  # Function for moving assets. How the fuck does this work
             self.y = mPos[1] - self.height * adjPosY
             self.newX = self.x - panX
             self.newY = self.y - panY
-            print(self.id)
             if self.id == 'separator':
                 setting.get(self.tag)[4] = self.newX
                 setting.get(self.tag)[5] = self.newY
+            elif self.id == 'valve':
+                setting.get(self.tag)[2] = self.newX
+                setting.get(self.tag)[3] = self.newY
 
 
 def info_box(self, source):
-    global tagInfo, editMenu
+    global tagInfo, editMenu, currentTag
     if self.rect.collidepoint(mPos) and edit and not clicked:
         font = pygame.font.SysFont('arial', 15, False)
         font_b = pygame.font.SysFont('arial', 15, True)
         color = (255, 255, 255)
-        if tagId == 'separator':
+        if not update:
+            currentTag = self.tag
+        if tagId == 'separator' and not update:
             info0 = font_b.render(str(self.tag), 1, (color))
             info1 = font.render('source: ' + str(source.tag), 1, (color))
             info2 = font.render('oil out: ' + str(self.oilOut.tag), 1, (color))
@@ -847,18 +870,26 @@ def faceplate_controller(self):
         
 
 def edit_menu():
-    global menu, menux, menuX, menuY
+    global menu, menuSep, menux, menuX, menuY
     if edit and rClicked and tagInfo == '':
         menu = True
+        menuX = mPos[0]
+        menuY = mPos[1]
+    elif edit and rClicked and tagId == 'separator':
+        menuSep = True
         menuX = mPos[0]
         menuY = mPos[1]
     if menu:
         nSepBtn.draw(menuX, menuY, 115, 25, 15, False)
         nValveBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
         nTransmitterBtn.draw(menuX, menuY + 50, 115, 25, 15, False)
+    if menuSep:
+        udSepBtn.draw(menuX, menuY, 115, 25, 15, False)
+        deleteBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
     if lClicked:
         menu = False
-               
+        menuSep = False
+        
 
 def pause_sim():
     global pause
@@ -875,6 +906,10 @@ def edit_mode():
     else:
         edit = True
 
+def delete():
+    setting.pop(currentTag)
+    assets.pop(currentTag)
+    assetsDraw.pop(currentTag)
 
 def clear():
     setting.clear()
@@ -940,6 +975,8 @@ loadBtn = Button('Load', load)
 nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
 nTransmitterBtn = Button('New Transmitter', new_transmitter)
+udSepBtn = Button('Update Separator', update_sep)
+deleteBtn = Button('Delete', delete)
 '''Input boxes for edit menus'''
 input_boxes = []
 
@@ -975,6 +1012,8 @@ def redraw():
         pauseBtn.color = (30, 191, 86)
     if newSep:
         new_sep()
+    elif update:
+        update_sep()
     for box in input_boxes:
         box.draw(screen)
         
