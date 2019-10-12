@@ -27,9 +27,12 @@ edit = False
 clickCount = 0
 menu = False
 menuSep = False
+menuCont = False
 editMenu = False
+
 newSep = False
-update = False
+updateSep = False
+updateCont = False
 
 adjPosX = 1
 adjPosY = 1
@@ -385,7 +388,10 @@ class Controller(object):
             dof = (self.dOffset[1] - self.dOffset[0]) * timeStep
 
             self.p = p_value * self.offset
-            self.i = p_value / i_value * dof
+            if i_value != 0:
+                self.i = p_value / i_value * dof
+            else:
+                self.i = 0
             self.d = - p_value * d_value * dpv
             self.pid = self.p + self.i + self.d
 
@@ -648,10 +654,10 @@ def new_sep(): # TODO: Add more options
     volume_water = 4
     plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 400))
     if not newSep:
-        input_box1 = InputBox(plate.x + 10, plate.y + 30, 100, 25) 
-        input_box2 = InputBox(plate.x + 10, plate.y + 65, 100, 25)
-        input_boxes.append(input_box1)
-        input_boxes.append(input_box2)
+        tag_box = InputBox(plate.x + 10, plate.y + 30, 100, 25, tag) 
+        source_box = InputBox(plate.x + 10, plate.y + 65, 100, 25, source)
+        input_boxes.append(tag_box)
+        input_boxes.append(source_box)
         newSep = True
     elif newSep:
         plate
@@ -675,7 +681,7 @@ def new_sep(): # TODO: Add more options
 
 
 def update_sep(): # TODO: Add more options
-    global update, enter
+    global updateSep, enter
     tag = currentTag
     x = mPos[0]
     y = mPos[1]
@@ -687,13 +693,15 @@ def update_sep(): # TODO: Add more options
     volume = 8
     volume_water = 4
     plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 400))
-    if not update:
-        input_box1 = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
-        input_box2 = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
-        input_boxes.append(input_box1)
-        input_boxes.append(input_box2)
-        update = True
-    if update:
+    if not updateSep:
+        source_box = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
+        out_oil_box = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
+        volume_box = InputBox(plate.x + 10, plate.y + 100, 100, 25, str(setting.get(currentTag)[7]))
+        input_boxes.append(source_box)
+        input_boxes.append(out_oil_box)
+        input_boxes.append(volume_box)
+        updateSep = True
+    if updateSep:
         plate
         heading = FONT.render('Update ' + currentTag, True, (0, 0, 0))
         screen.blit(heading, (plate.x + 15, plate.y + 5))
@@ -701,13 +709,17 @@ def update_sep(): # TODO: Add more options
         screen.blit(tagTXT, (plate.x + 120, plate.y + 30))
         sourceTXT = FONT.render('Oil out', True, (0, 0, 0))
         screen.blit(sourceTXT, (plate.x + 120, plate.y + 65))
+        sourceTXT = FONT.render('Volume', True, (0, 0, 0))
+        screen.blit(sourceTXT, (plate.x + 120, plate.y + 100))
         if enter:
             assetsDraw.get(currentTag)[0] = assets.get(input_boxes[0].text)
             assetsDraw.get(currentTag)[1] = assets.get(input_boxes[1].text)
+            assetsDraw.get(currentTag)[7] = float(input_boxes[2].text)
             setting.get(currentTag)[0] = input_boxes[0].text
             setting.get(currentTag)[1] = input_boxes[1].text
+            setting.get(currentTag)[7] = float(input_boxes[2].text)
             input_boxes.clear()
-            update = False
+            updateSep = False
             enter = False
 
 
@@ -739,6 +751,63 @@ def new_controller(tag='c001', source='dummy0', target='dummy0', p=5, i=10, d=5)
     assets.setdefault(tag, Controller())
     assetsDraw.setdefault(tag, [source, target, p, i, d, tag])
     setting.setdefault(tag, [source, target, p, i, d, tag, 'controller'])
+
+def update_controller(): # TODO: Add more options
+    global updateCont, enter
+    tag = currentTag
+    x = mPos[0]
+    y = mPos[1]
+    source = 'dummy0'
+    target = 'dummy0'
+    p = 5
+    i = 10
+    d = 5
+    ex_btn = Button('X')
+    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 300))
+    if not updateCont:
+        source_box = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
+        target_box = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
+        p_box = InputBox(plate.x + 10, plate.y + 100, 100, 25, str(setting.get(currentTag)[2]))
+        i_box = InputBox(plate.x + 10, plate.y + 135, 100, 25, str(setting.get(currentTag)[3]))
+        d_box = InputBox(plate.x + 10, plate.y + 170, 100, 25, str(setting.get(currentTag)[4]))
+        input_boxes.append(source_box)
+        input_boxes.append(target_box)
+        input_boxes.append(p_box)
+        input_boxes.append(i_box)
+        input_boxes.append(d_box)
+        updateCont = True
+    if updateCont:
+        plate
+        ex_btn.draw(plate.x + 230, plate.y + 10, 15, 15, 12)
+        heading = FONT.render('Update ' + tag, True, (0, 0, 0))
+        screen.blit(heading, (plate.x + 15, plate.y + 5))
+        sourceTXT = FONT.render('Source', True, (0, 0, 0))
+        screen.blit(sourceTXT, (plate.x + 120, plate.y + 30))
+        targetTXT = FONT.render('Target', True, (0, 0, 0))
+        screen.blit(targetTXT, (plate.x + 120, plate.y + 65))
+        pTXT = FONT.render('P', True, (0, 0, 0))
+        screen.blit(pTXT, (plate.x + 120, plate.y + 100))
+        iTXT = FONT.render('I', True, (0, 0, 0))
+        screen.blit(iTXT, (plate.x + 120, plate.y + 135))
+        dTXT = FONT.render('D', True, (0, 0, 0))
+        screen.blit(dTXT, (plate.x + 120, plate.y + 170))
+        if enter:
+            assetsDraw.get(currentTag)[0] = assets.get(input_boxes[0].text)
+            assetsDraw.get(currentTag)[1] = assets.get(input_boxes[1].text)
+            assetsDraw.get(currentTag)[2] = float(input_boxes[2].text)
+            assetsDraw.get(currentTag)[3] = float(input_boxes[3].text)
+            assetsDraw.get(currentTag)[4] = float(input_boxes[4].text)
+            setting.get(currentTag)[0] = input_boxes[0].text
+            setting.get(currentTag)[1] = input_boxes[1].text
+            setting.get(currentTag)[2] = float(input_boxes[2].text)
+            setting.get(currentTag)[3] = float(input_boxes[3].text)
+            setting.get(currentTag)[4] = float(input_boxes[4].text)
+            input_boxes.clear()
+            updateCont = False
+            enter = False
+        if ex_btn.click:
+            updateCont = False
+            input_boxes.clear()
     
 
 def move(self, x, y):  # Function for moving assets. How the fuck does this work?!
@@ -776,9 +845,9 @@ def info_box(self, source):
         font = pygame.font.SysFont('arial', 15, False)
         font_b = pygame.font.SysFont('arial', 15, True)
         color = (255, 255, 255)
-        if not update:
+        if not updateSep and not updateCont:
             currentTag = self.tag
-        if tagId == 'separator' and not update:
+        if tagId == 'separator' and not updateSep:
             info0 = font_b.render(str(self.tag), 1, (color))
             info1 = font.render('source: ' + str(source.tag), 1, (color))
             info2 = font.render('oil out: ' + str(self.oilOut.tag), 1, (color))
@@ -870,13 +939,17 @@ def faceplate_controller(self):
         
 
 def edit_menu():
-    global menu, menuSep, menux, menuX, menuY
+    global menu, menuSep, menux, menuX, menuY, menuCont
     if edit and rClicked and tagInfo == '':
         menu = True
         menuX = mPos[0]
         menuY = mPos[1]
     elif edit and rClicked and tagId == 'separator':
         menuSep = True
+        menuX = mPos[0]
+        menuY = mPos[1]
+    elif edit and rClicked and tagId == 'controller':
+        menuCont = True
         menuX = mPos[0]
         menuY = mPos[1]
     if menu:
@@ -886,9 +959,13 @@ def edit_menu():
     if menuSep:
         udSepBtn.draw(menuX, menuY, 115, 25, 15, False)
         deleteBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
+    elif menuCont:
+        udContBtn.draw(menuX, menuY, 115, 25, 15, False)
+        deleteBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
     if lClicked:
         menu = False
         menuSep = False
+        menuCont = False
         
 
 def pause_sim():
@@ -976,6 +1053,7 @@ nSepBtn = Button('New Separator', new_sep)
 nValveBtn = Button('New Valve', new_valve)
 nTransmitterBtn = Button('New Transmitter', new_transmitter)
 udSepBtn = Button('Update Separator', update_sep)
+udContBtn = Button('Update Controller', update_controller)
 deleteBtn = Button('Delete', delete)
 '''Input boxes for edit menus'''
 input_boxes = []
@@ -1012,8 +1090,10 @@ def redraw():
         pauseBtn.color = (30, 191, 86)
     if newSep:
         new_sep()
-    elif update:
+    elif updateSep:
         update_sep()
+    elif updateCont:
+        update_controller()
     for box in input_boxes:
         box.draw(screen)
         
