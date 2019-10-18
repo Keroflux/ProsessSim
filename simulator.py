@@ -28,11 +28,15 @@ clickCount = 0
 menu = False
 menuSep = False
 menuCont = False
+menuValve = False
 editMenu = False
+saveMenu = False
+loadMenu = False
 
 newSep = False
 updateSep = False
 updateCont = False
+updateValve = False
 
 adjPosX = 1
 adjPosY = 1
@@ -744,6 +748,58 @@ def new_valve(tag='v001', typ='oil', size=1, source=assets.get('dummy0'), out_so
     setting.setdefault(tag, [new_src, 'dummy0', x, y, tag, typ, size, 'valve'])
 
 
+def update_valve(): # TODO: fix to valve not controller
+    global updateValve, enter
+    tag = currentTag
+    x = mPos[0]
+    y = mPos[1]
+    source = 'dummy0'
+    target = 'dummy0'
+    p = 5
+    i = 10
+    d = 5
+    ex_btn = Button('X')
+    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 200))
+    if not updateValve:
+        source_box = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
+        out_source_box = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
+        type_box = InputBox(plate.x + 10, plate.y + 135, 100, 25, setting.get(currentTag)[5])
+        size_box = InputBox(plate.x + 10, plate.y + 100, 100, 25, str(setting.get(currentTag)[6]))
+        input_boxes.append(source_box)
+        input_boxes.append(out_source_box)
+        input_boxes.append(size_box)
+        input_boxes.append(type_box)
+        updateValve = True
+    if updateValve:
+        plate
+        ex_btn.draw(plate.x + 230, plate.y + 10, 15, 15, 12)
+        heading = FONT.render('Update ' + tag, True, (0, 0, 0))
+        screen.blit(heading, (plate.x + 15, plate.y + 5))
+        sourceTXT = FONT.render('Source', True, (0, 0, 0))
+        screen.blit(sourceTXT, (plate.x + 120, plate.y + 30))
+        targetTXT = FONT.render('Out source', True, (0, 0, 0))
+        screen.blit(targetTXT, (plate.x + 120, plate.y + 65))
+        pTXT = FONT.render('Size', True, (0, 0, 0))
+        screen.blit(pTXT, (plate.x + 120, plate.y + 100))
+        iTXT = FONT.render('Type', True, (0, 0, 0))
+        screen.blit(iTXT, (plate.x + 120, plate.y + 135))
+        if enter:
+            assetsDraw.get(currentTag)[0] = assets.get(input_boxes[0].text)
+            assetsDraw.get(currentTag)[1] = assets.get(input_boxes[1].text)
+            assetsDraw.get(currentTag)[5] = input_boxes[3].text
+            assetsDraw.get(currentTag)[6] = float(input_boxes[2].text)
+            setting.get(currentTag)[0] = input_boxes[0].text
+            setting.get(currentTag)[1] = input_boxes[1].text
+            setting.get(currentTag)[5] = input_boxes[3].text
+            setting.get(currentTag)[6] = float(input_boxes[2].text)
+            #input_boxes.clear()
+            #updateCont = False
+            enter = False
+        if ex_btn.click:
+            input_boxes.clear()
+            updateValve = False
+
+
 def new_controller(tag='c001', source='dummy0', target='dummy0', p=5, i=10, d=5):
     tag = input('Tag: ')
     new_src = input('Source: ')
@@ -763,7 +819,7 @@ def update_controller(): # TODO: Add more options
     i = 10
     d = 5
     ex_btn = Button('X')
-    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 300))
+    plate = pygame.draw.rect(screen, (193, 193, 193), (500, 350, 250, 200))
     if not updateCont:
         source_box = InputBox(plate.x + 10, plate.y + 30, 100, 25, setting.get(currentTag)[0]) 
         target_box = InputBox(plate.x + 10, plate.y + 65, 100, 25, setting.get(currentTag)[1])
@@ -802,13 +858,13 @@ def update_controller(): # TODO: Add more options
             setting.get(currentTag)[2] = float(input_boxes[2].text)
             setting.get(currentTag)[3] = float(input_boxes[3].text)
             setting.get(currentTag)[4] = float(input_boxes[4].text)
-            input_boxes.clear()
-            updateCont = False
+            #input_boxes.clear()
+            #updateCont = False
             enter = False
         if ex_btn.click:
-            updateCont = False
             input_boxes.clear()
-    
+            updateCont = False
+            
 
 def move(self, x, y):  # Function for moving assets. How the fuck does this work?!
     global adjPosX, adjPosY # TODO: Update X/Y pos in setting for all assets
@@ -939,19 +995,20 @@ def faceplate_controller(self):
         
 
 def edit_menu():
-    global menu, menuSep, menux, menuX, menuY, menuCont
+    global menu, menuSep, menux, menuX, menuY, menuCont, menuValve
     if edit and rClicked and tagInfo == '':
         menu = True
         menuX = mPos[0]
         menuY = mPos[1]
-    elif edit and rClicked and tagId == 'separator':
-        menuSep = True
+    elif edit and rClicked:
         menuX = mPos[0]
         menuY = mPos[1]
-    elif edit and rClicked and tagId == 'controller':
-        menuCont = True
-        menuX = mPos[0]
-        menuY = mPos[1]
+        if tagId == 'separator':
+            menuSep = True
+        if tagId == 'controller':
+            menuCont = True
+        if tagId == 'valve':
+            menuValve = True
     if menu:
         nSepBtn.draw(menuX, menuY, 115, 25, 15, False)
         nValveBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
@@ -962,10 +1019,14 @@ def edit_menu():
     elif menuCont:
         udContBtn.draw(menuX, menuY, 115, 25, 15, False)
         deleteBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
+    elif menuValve:
+        udValveBtn.draw(menuX, menuY, 115, 25, 15, False)
+        deleteBtn.draw(menuX, menuY + 25, 115, 25, 15, False)
     if lClicked:
         menu = False
         menuSep = False
         menuCont = False
+        menuValve = False
         
 
 def pause_sim():
@@ -993,49 +1054,74 @@ def clear():
     assets.clear()
     assetsDraw.clear()
 
-def save(): # TODO: Chose save name
-    print('Saving...')
-    pickle.dump(setting, open('save.p', 'wb'))
-    print('Saved')
+def save(): # TODO: Astetics
+    global saveMenu, enter
+    if not saveMenu:
+        save_box = InputBox(500, 500, 100, 25)
+        input_boxes.append(save_box)
+        saveMenu = True
+    if enter:
+        print('Saving...')
+        pickle.dump(setting, open(input_boxes[0].text + '.p', 'wb'))
+        print('Saved ' + input_boxes[0].text)
+        input_boxes.clear()
+        saveMenu = False
+        enter = False
 
 
-def load(): # TODO: Chose witch save to load
-    global setting
-    print('loading...')
-    setting.update(pickle.load(open('save.p', 'rb')))
-    
-    for tag in setting:
-        if setting.get(tag)[-1] == 'separator':
-            assets.setdefault(tag, Separator())
-        elif setting.get(tag)[-1] == 'dummy':
-            assets.setdefault(tag, Dummy(tag))
-        elif setting.get(tag)[-1] == 'valve':
-            assets.setdefault(tag, Valve())
-        elif setting.get(tag)[-1] == 'transmitter':
-            assets.setdefault(tag, Transmitter())
-        elif setting.get(tag)[-1] == 'controller':
-            assets.setdefault(tag, Controller())
-
-    for tag in setting:
-        if setting.get(tag)[-1] == 'separator':
-            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]),
-                                        assets.get(setting.get(tag)[2]), assets.get(setting.get(tag)[3]),
-                                        setting.get(tag)[4], setting.get(tag)[5], setting.get(tag)[6],
-                                        setting.get(tag)[7], setting.get(tag)[8]])
-        elif setting.get(tag)[-1] == 'dummy':
-            assetsDraw.setdefault(tag, [setting.get(tag)[1], setting.get(tag)[2], setting.get(tag)[3]])
-        elif setting.get(tag)[-1] == 'transmitter':
-            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), setting.get(tag)[1], setting.get(tag)[2],
-                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5]])
-        elif setting.get(tag)[-1] == 'valve':
-            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
-                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
-                                        setting.get(tag)[6], setting.get(tag)[7]])
-        elif setting.get(tag)[-1] == 'controller':
-            assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
-                                        setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
-                                        setting.get(tag)[6]])
-    print('done loading')
+def load(): # TODO: Dropdown list?
+    global setting, loadMenu, enter
+    if not loadMenu:
+        load_box = InputBox(500, 500, 100, 25)
+        input_boxes.append(load_box)
+        loadMenu = True
+    if enter:
+        print('loading from save: ' + input_boxes[0].text + '...')
+        try:
+            setting.update(pickle.load(open(input_boxes[0].text + '.p', 'rb')))
+            print('Setting things up...')
+            for tag in setting:
+                if setting.get(tag)[-1] == 'separator':
+                    assets.setdefault(tag, Separator())
+                elif setting.get(tag)[-1] == 'dummy':
+                    assets.setdefault(tag, Dummy(tag))
+                elif setting.get(tag)[-1] == 'valve':
+                    assets.setdefault(tag, Valve())
+                elif setting.get(tag)[-1] == 'transmitter':
+                    assets.setdefault(tag, Transmitter())
+                elif setting.get(tag)[-1] == 'controller':
+                    assets.setdefault(tag, Controller())
+            print('Drawing things...')
+            for tag in setting:
+                if setting.get(tag)[-1] == 'separator':
+                    assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]),
+                                                assets.get(setting.get(tag)[2]), assets.get(setting.get(tag)[3]),
+                                                setting.get(tag)[4], setting.get(tag)[5], setting.get(tag)[6],
+                                                setting.get(tag)[7], setting.get(tag)[8]])
+                elif setting.get(tag)[-1] == 'dummy':
+                    assetsDraw.setdefault(tag, [setting.get(tag)[1], setting.get(tag)[2], setting.get(tag)[3]])
+                elif setting.get(tag)[-1] == 'transmitter':
+                    assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), setting.get(tag)[1], setting.get(tag)[2],
+                                                setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5]])
+                elif setting.get(tag)[-1] == 'valve':
+                    assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                                setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                                setting.get(tag)[6], setting.get(tag)[7]])
+                elif setting.get(tag)[-1] == 'controller':
+                    assetsDraw.setdefault(tag, [assets.get(setting.get(tag)[0]), assets.get(setting.get(tag)[1]), setting.get(tag)[2],
+                                                setting.get(tag)[3], setting.get(tag)[4], setting.get(tag)[5],
+                                                setting.get(tag)[6]])
+            print(input_boxes[0].text + ' done loading!')
+            input_boxes.clear()
+            enter = False
+            loadMenu = False
+            
+        except FileNotFoundError:
+            print(input_boxes[0].text + ' Does not exist')
+            input_boxes.clear()
+            enter = False
+            loadMenu = False
+            pass
 
 
 def new_trend(tag):
@@ -1054,6 +1140,7 @@ nValveBtn = Button('New Valve', new_valve)
 nTransmitterBtn = Button('New Transmitter', new_transmitter)
 udSepBtn = Button('Update Separator', update_sep)
 udContBtn = Button('Update Controller', update_controller)
+udValveBtn = Button('Update Valve', update_valve)
 deleteBtn = Button('Delete', delete)
 '''Input boxes for edit menus'''
 input_boxes = []
@@ -1094,6 +1181,12 @@ def redraw():
         update_sep()
     elif updateCont:
         update_controller()
+    elif updateValve:
+        update_valve()
+    elif saveMenu:
+        save()
+    elif loadMenu:
+        load()
     for box in input_boxes:
         box.draw(screen)
         
@@ -1150,7 +1243,7 @@ while run:
             if event.key == pygame.K_RETURN:
                 enter = False
             '''Edit mode'''
-            if event.key == pygame.K_e and not edit:
+            if event.key == pygame.K_e and not edit and not saveMenu and not loadMenu:
                 edit = True
             elif event.key == pygame.K_e and edit:
                 edit = False
